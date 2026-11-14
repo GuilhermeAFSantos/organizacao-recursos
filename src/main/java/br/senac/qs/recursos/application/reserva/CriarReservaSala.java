@@ -59,7 +59,7 @@ public class CriarReservaSala {
     }
 
     @Transactional
-    public ReservaCriada executar(CriarReservaSalaComando comando) {
+    public ReservaResumo executar(CriarReservaSalaComando comando) {
         var periodo = new PeriodoReserva(comando.inicio(), comando.fim());
         var solicitante = solicitanteAtivo(comando.emailSolicitante());
         var sala = salaAtivaTravada(comando.salaId());
@@ -68,8 +68,7 @@ public class CriarReservaSala {
         var reserva = gravar(Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(), clock.instant()), sala);
         // RC08: na mesma transação da reserva. Se a auditoria falhar, a reserva também é desfeita.
         reserva.retirarMudancas().forEach(m -> auditoria.save(RegistroAuditoria.daReserva(reserva.getId(), m)));
-        return new ReservaCriada(reserva.getId(), sala.getId(), periodo.inicio(), periodo.fim(),
-                reserva.getFinalidade(), reserva.getStatus());
+        return ReservaResumo.de(reserva);
     }
 
     /** O token é válido, mas o usuário pode ter sido desativado depois da emissão. */

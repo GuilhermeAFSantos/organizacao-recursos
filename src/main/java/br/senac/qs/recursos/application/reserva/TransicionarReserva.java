@@ -44,36 +44,36 @@ public class TransicionarReserva {
     }
 
     @Transactional
-    public ReservaCriada aprovar(Long reservaId, String emailAutor) {
+    public ReservaResumo aprovar(Long reservaId, String emailAutor) {
         return executar(reservaId, emailAutor, Reserva::aprovar);
     }
 
     @Transactional
-    public ReservaCriada rejeitar(Long reservaId, String emailAutor, String motivo) {
+    public ReservaResumo rejeitar(Long reservaId, String emailAutor, String motivo) {
         return executar(reservaId, emailAutor, (r, autor, agora) -> r.rejeitar(autor, motivo, agora));
     }
 
     @Transactional
-    public ReservaCriada cancelar(Long reservaId, String emailAutor, String motivo) {
+    public ReservaResumo cancelar(Long reservaId, String emailAutor, String motivo) {
         return executar(reservaId, emailAutor, (r, autor, agora) -> r.cancelar(autor, motivo, agora));
     }
 
     @Transactional
-    public ReservaCriada iniciarUso(Long reservaId, String emailAutor) {
+    public ReservaResumo iniciarUso(Long reservaId, String emailAutor) {
         return executar(reservaId, emailAutor, Reserva::iniciarUso);
     }
 
     @Transactional
-    public ReservaCriada registrarNaoComparecimento(Long reservaId, String emailAutor, String motivo) {
+    public ReservaResumo registrarNaoComparecimento(Long reservaId, String emailAutor, String motivo) {
         return executar(reservaId, emailAutor, (r, autor, agora) -> r.registrarNaoComparecimento(autor, motivo, agora));
     }
 
     @Transactional
-    public ReservaCriada concluir(Long reservaId, String emailAutor) {
+    public ReservaResumo concluir(Long reservaId, String emailAutor) {
         return executar(reservaId, emailAutor, Reserva::concluir);
     }
 
-    private ReservaCriada executar(Long reservaId, String emailAutor, Transicao transicao) {
+    private ReservaResumo executar(Long reservaId, String emailAutor, Transicao transicao) {
         var reserva = reservas.findById(reservaId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Reserva " + reservaId + " não encontrada."));
         var autor = usuarios.findByEmailIgnoreCase(emailAutor)
@@ -85,8 +85,6 @@ public class TransicionarReserva {
         // Flush agora: o UPDATE com checagem de versão roda aqui, não no commit.
         reservas.saveAndFlush(reserva);
         reserva.retirarMudancas().forEach(m -> auditoria.save(RegistroAuditoria.daReserva(reserva.getId(), m)));
-        var periodo = reserva.getPeriodo();
-        return new ReservaCriada(reserva.getId(), reserva.getOcupacoes().get(0).getRecurso().getId(),
-                periodo.inicio(), periodo.fim(), reserva.getFinalidade(), reserva.getStatus());
+        return ReservaResumo.de(reserva);
     }
 }
