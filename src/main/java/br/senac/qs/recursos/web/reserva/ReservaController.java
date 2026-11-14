@@ -1,5 +1,6 @@
 package br.senac.qs.recursos.web.reserva;
 
+import br.senac.qs.recursos.application.reserva.AlterarHorarioReserva;
 import br.senac.qs.recursos.application.reserva.CriarReserva;
 import br.senac.qs.recursos.application.reserva.CriarReservaComando;
 import br.senac.qs.recursos.application.reserva.TransicionarReserva;
@@ -10,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -28,10 +30,13 @@ public class ReservaController {
 
     private final CriarReserva criarReserva;
     private final TransicionarReserva transicionar;
+    private final AlterarHorarioReserva alterarHorario;
 
-    public ReservaController(CriarReserva criarReserva, TransicionarReserva transicionar) {
+    public ReservaController(CriarReserva criarReserva, TransicionarReserva transicionar,
+                             AlterarHorarioReserva alterarHorario) {
         this.criarReserva = criarReserva;
         this.transicionar = transicionar;
+        this.alterarHorario = alterarHorario;
     }
 
     @PostMapping
@@ -43,6 +48,16 @@ public class ReservaController {
                 requisicao.materiaisIds(), requisicao.inicio().toInstant(), requisicao.fim().toInstant(),
                 requisicao.finalidade());
         return ReservaResponse.de(criarReserva.executar(comando));
+    }
+
+    /** RF04: a dona da reserva ou um ADMINISTRADOR muda o horário, mantendo os recursos. */
+    @PutMapping("/{id}/horario")
+    @PreAuthorize("hasAnyRole('SOLICITANTE', 'ADMINISTRADOR')")
+    public ReservaResponse alterarHorario(@PathVariable Long id,
+                                          @Valid @RequestBody AlterarHorarioRequest requisicao,
+                                          @AuthenticationPrincipal Jwt jwt) {
+        return ReservaResponse.de(alterarHorario.executar(id, jwt.getSubject(), requisicao.inicio().toInstant(),
+                requisicao.fim().toInstant()));
     }
 
     @PostMapping("/{id}/aprovacao")
