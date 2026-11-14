@@ -291,7 +291,6 @@ class AlteracaoHorarioIT {
     long professor() {
         var corpo = new HashMap<String, Object>();
         corpo.put("nome", "Carlos Lima");
-        corpo.put("restrito", false);
         corpo.put("matricula", UUID.randomUUID().toString().substring(0, 12));
         return idDe(http.postForEntity("/api/professores", new HttpEntity<>(corpo, cabecalhos(adm)), JsonNode.class));
     }

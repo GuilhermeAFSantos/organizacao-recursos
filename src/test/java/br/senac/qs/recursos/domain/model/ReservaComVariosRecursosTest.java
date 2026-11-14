@@ -29,8 +29,9 @@ class ReservaComVariosRecursosTest {
     final Usuario ana = new Usuario("ana@senac.br", Perfil.SOLICITANTE);
     final Sala sala = new Sala("Sala 101", false);
 
-    Professor professor(boolean restrito) {
-        return Professor.cadastrar(adm, "Carlos Lima", restrito, "P-1", null, Set.of());
+    /** Todo professor é restrito (D4). */
+    Professor professor() {
+        return Professor.cadastrar(adm, "Carlos Lima", "P-1", null, Set.of());
     }
 
     Material projetor(EstadoConservacao estado) {
@@ -40,7 +41,7 @@ class ReservaComVariosRecursosTest {
     @Test
     @DisplayName("uma ocupação por recurso, todas no mesmo período")
     void ocupacoes() {
-        var professor = professor(false);
+        var professor = professor();
         var projetor = projetor(EstadoConservacao.BOM);
 
         var reserva = Reserva.solicitar(ana, List.of(sala, professor, projetor), PERIODO, "Aula", ANTES);
@@ -52,15 +53,15 @@ class ReservaComVariosRecursosTest {
     @Test
     @DisplayName("nenhum recurso restrito: aprovação automática")
     void semRestrito() {
-        var reserva = Reserva.solicitar(ana, List.of(sala, professor(false)), PERIODO, "Aula", ANTES);
+        var reserva = Reserva.solicitar(ana, List.of(sala, projetor(EstadoConservacao.BOM)), PERIODO, "Aula", ANTES);
 
         assertThat(reserva.getStatus()).isEqualTo(APROVADA);
     }
 
     @Test
-    @DisplayName("basta um recurso restrito (o professor) para exigir aprovação")
+    @DisplayName("basta um recurso restrito para exigir aprovação: com professor, sempre (D4)")
     void umRestrito() {
-        var reserva = Reserva.solicitar(ana, List.of(sala, professor(true)), PERIODO, "Aula", ANTES);
+        var reserva = Reserva.solicitar(ana, List.of(sala, professor()), PERIODO, "Aula", ANTES);
 
         assertThat(reserva.getStatus()).isEqualTo(SOLICITADA);
     }
@@ -68,7 +69,7 @@ class ReservaComVariosRecursosTest {
     @Test
     @DisplayName("recurso desativado não é reservado, com mensagem no gênero certo")
     void desativado() {
-        var professor = professor(false);
+        var professor = professor();
         professor.desativar(adm);
         var salaInativa = new Sala("Sala 102", false);
         salaInativa.desativar(adm);

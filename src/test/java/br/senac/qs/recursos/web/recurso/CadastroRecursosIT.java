@@ -393,7 +393,6 @@ class CadastroRecursosIT {
     static Map<String, Object> professor(String matricula, List<String> competencias) {
         var corpo = new HashMap<String, Object>();
         corpo.put("nome", "Carlos Lima");
-        corpo.put("restrito", true);
         corpo.put("matricula", matricula);
         corpo.put("email", " Carlos@Senac.br ");
         corpo.put("competencias", competencias);
