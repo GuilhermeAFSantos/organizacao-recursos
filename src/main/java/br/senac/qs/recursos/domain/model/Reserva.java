@@ -139,7 +139,7 @@ public class Reserva {
      * estado → horário atual → horário novo.
      */
     public void exigirAlteravel(Usuario autor, PeriodoReserva novo, Instant agora) {
-        if (!autor.mesmaPessoaQue(solicitante) && autor.getPerfil() != Perfil.ADMINISTRADOR) {
+        if (!eDonaOuAdministrador(autor)) {
             throw new OperacaoNaoPermitidaException(
                     "Somente quem solicitou a reserva ou um ADMINISTRADOR pode alterá-la.");
         }
@@ -162,6 +162,11 @@ public class Reserva {
     /** D1: sem recurso restrito, não há quem precise aprovar; o sistema aprova e isso fica auditado. */
     private void aprovarAutomaticamente(Instant agora) {
         mudarPara(APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA, MOTIVO_APROVACAO_AUTOMATICA, agora);
+    }
+
+    /** Quem pode mexer na reserva sem ser RESPONSAVEL: quem a solicitou ou um ADMINISTRADOR. */
+    private boolean eDonaOuAdministrador(Usuario autor) {
+        return autor.mesmaPessoaQue(solicitante) || autor.getPerfil() == Perfil.ADMINISTRADOR;
     }
 
     /** O horário reservado já começou (ou passou) neste instante? */
@@ -196,7 +201,7 @@ public class Reserva {
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
-        if (!autor.mesmaPessoaQue(solicitante) && autor.getPerfil() != Perfil.ADMINISTRADOR) {
+        if (!eDonaOuAdministrador(autor)) {
             throw new OperacaoNaoPermitidaException(
                     "Somente quem solicitou a reserva ou um ADMINISTRADOR pode cancelá-la.");
         }
