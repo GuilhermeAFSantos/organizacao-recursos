@@ -55,9 +55,7 @@ public class Bloqueio {
 
     public static Bloqueio registrar(Usuario administrador, Recurso recurso, TipoBloqueio tipo,
                                      PeriodoReserva periodo, String motivo, Instant agora) {
-        if (administrador.getPerfil() != Perfil.ADMINISTRADOR) {
-            throw new OperacaoNaoPermitidaException("Somente um ADMINISTRADOR pode registrar ou encerrar bloqueios.");
-        }
+        exigirAdministrador(administrador);
         if (motivo == null || motivo.isBlank()) {
             throw new RegraNegocioException("Informe o motivo do bloqueio.");
         }
@@ -77,6 +75,12 @@ public class Bloqueio {
      */
     public void encerrar(Usuario administrador, Instant agora) {
         // Prática de TDD estrito: regra removida, a ser refeita no cenário MN-11.
+    }
+
+    private static void exigirAdministrador(Usuario usuario) {
+        if (usuario.getPerfil() != Perfil.ADMINISTRADOR) {
+            throw new OperacaoNaoPermitidaException("Somente um ADMINISTRADOR pode registrar ou encerrar bloqueios.");
+        }
     }
 
     public boolean isAtivo() {
