@@ -89,7 +89,9 @@ public class AgendaDeRecursos {
 
     private static String bloqueado(Recurso recurso, Bloqueio bloqueio) {
         var p = bloqueio.getPeriodo();
-        return recurso.identificacao() + " está em manutenção das " + HORA.format(p.inicio().atZone(BRASILIA))
+        var situacao = bloqueio.getTipo() == TipoBloqueio.MANUTENCAO ? "está em manutenção"
+                : "está " + recurso.getTipo().concordar("bloqueado");
+        return recurso.identificacao() + " " + situacao + " das " + HORA.format(p.inicio().atZone(BRASILIA))
                 + " às " + HORA.format(p.fim().atZone(BRASILIA)) + " de " + DATA.format(p.inicio().atZone(BRASILIA))
                 + ". Escolha outro horário ou " + recurso.getTipo().outro() + ".";
     }
