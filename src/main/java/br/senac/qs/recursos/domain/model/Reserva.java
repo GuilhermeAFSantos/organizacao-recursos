@@ -203,7 +203,7 @@ public class Reserva {
     }
 
     private static void recusarSolicitante(Usuario autor, String acao) {
-        if (autor.getPerfil() == Perfil.SOLICITANTE) {
+        if (autor.getPerfil() != Perfil.RESPONSAVEL) {
             throw new OperacaoNaoPermitidaException("Somente um RESPONSAVEL pode " + acao + " reservas.");
         }
     }
