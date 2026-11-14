@@ -52,8 +52,7 @@ public record PeriodoReserva(Instant inicio, Instant fim) {
      * contrário a aplicação aceitaria o que o banco recusa, ou o contrário.
      */
     public boolean sobrepoe(PeriodoReserva outro) {
-        // Prática de TDD estrito: regra removida, a ser refeita no cenário MN-01.
-        return false;
+        return this.inicio.isBefore(outro.fim) && outro.inicio.isBefore(this.fim);
     }
 
     /** Ex.: "01/12/2026 10:00–12:00", ou com as duas datas quando o período vira o dia. */
