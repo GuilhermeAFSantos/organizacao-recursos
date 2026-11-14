@@ -179,6 +179,8 @@ public class Reserva {
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
         exigirResponsavel(responsavel, "rejeitar");
+        mudarPara(REJEITADA, responsavel.getId(), responsavel.getEmail(), motivo, agora);
+        ocupacoes.forEach(Ocupacao::liberar);
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
