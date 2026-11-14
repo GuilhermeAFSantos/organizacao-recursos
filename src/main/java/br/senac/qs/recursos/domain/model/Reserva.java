@@ -174,13 +174,12 @@ public class Reserva {
         exigirResponsavel(responsavel, "aprovar");
         proibirDecisaoSobreAPropria(responsavel);
         this.aprovador = responsavel;
-        mudarPara(APROVADA, responsavel.getId(), responsavel.getEmail(), null, agora);
+        mudarPara(APROVADA, responsavel, null, agora);
     }
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
         exigirResponsavel(responsavel, "rejeitar");
-        mudarPara(REJEITADA, responsavel.getId(), responsavel.getEmail(), motivo, agora);
-        ocupacoes.forEach(Ocupacao::liberar);
+        mudarPara(REJEITADA, responsavel, motivo, agora);
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
@@ -225,7 +224,14 @@ public class Reserva {
         this.status = novo;
         this.motivoStatus = motivo;
         this.atualizadoEm = agora;
+        if (novo.liberaHorario()) {
+            ocupacoes.forEach(Ocupacao::liberar);
+        }
         registrar(anterior, novo, autorId, autorEmail, motivo, agora);
+    }
+
+    private void mudarPara(StatusReserva novo, Usuario autor, String motivo, Instant agora) {
+        mudarPara(novo, autor.getId(), autor.getEmail(), motivo, agora);
     }
 
     private void registrar(StatusReserva anterior, StatusReserva novo, Long autorId, String autorEmail,
