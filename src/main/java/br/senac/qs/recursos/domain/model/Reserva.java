@@ -194,19 +194,19 @@ public class Reserva {
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
-        // Prática de TDD estrito: regra removida, a ser refeita cenário a cenário.
+        mudarPara(CANCELADA, autor, motivo, agora);
     }
 
     public void iniciarUso(Usuario responsavel, Instant agora) {
-        // Prática de TDD estrito: regra removida, a ser refeita cenário a cenário.
+        mudarPara(EM_USO, responsavel, null, agora);
     }
 
     public void registrarNaoComparecimento(Usuario responsavel, String motivo, Instant agora) {
-        // Prática de TDD estrito: regra removida, a ser refeita cenário a cenário.
+        mudarPara(NAO_COMPARECEU, responsavel, motivo, agora);
     }
 
     public void concluir(Usuario responsavel, Instant agora) {
-        // Prática de TDD estrito: regra removida, a ser refeita cenário a cenário.
+        mudarPara(CONCLUIDA, responsavel, null, agora);
     }
 
     public List<MudancaDeEstado> retirarMudancas() {
