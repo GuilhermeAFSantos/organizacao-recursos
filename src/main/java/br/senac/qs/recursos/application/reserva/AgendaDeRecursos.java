@@ -93,12 +93,16 @@ public class AgendaDeRecursos {
                 : "está " + recurso.getTipo().concordar("bloqueado");
         return recurso.identificacao() + " " + situacao + " das " + HORA.format(p.inicio().atZone(BRASILIA))
                 + " às " + HORA.format(p.fim().atZone(BRASILIA)) + " de " + DATA.format(p.inicio().atZone(BRASILIA))
-                + ". Escolha outro horário ou " + recurso.getTipo().outro() + ".";
+                + ". " + escolhaOutro(recurso);
+    }
+
+    private static String escolhaOutro(Recurso recurso) {
+        return "Escolha outro horário ou " + recurso.getTipo().outro() + ".";
     }
 
     private static String ocupado(Recurso recurso) {
         var tipo = recurso.getTipo();
         return recurso.identificacao() + " já está " + tipo.concordar("ocupado")
-                + " nesse horário. Escolha outro horário ou " + tipo.outro() + ".";
+                + " nesse horário. " + escolhaOutro(recurso);
     }
 }

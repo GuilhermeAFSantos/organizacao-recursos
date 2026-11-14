@@ -44,11 +44,7 @@ class AgendaDeRecursosTest {
     @Test
     @DisplayName("MN-02: reserva recusada por manutenção explica a sala, o horário e a data, sem detalhe interno")
     void recusaPorManutencaoExplicaSalaHorarioEData() {
-        var manutencao = Bloqueio.registrar(adm, sala101, TipoBloqueio.MANUTENCAO, periodo("10:00", "12:00"),
-                "Troca do projetor", instante("07:00"));
-        when(ocupacoes.sobrepostas(any(), any(), any())).thenReturn(manutencao.getOcupacoes());
-
-        assertThatThrownBy(() -> agenda.garantirLivre(List.of(sala101), periodo("10:30", "11:30"), null, ana))
+        assertThatThrownBy(() -> conflitoCom(TipoBloqueio.MANUTENCAO))
                 .isInstanceOf(ConflitoHorarioException.class)
                 .hasMessage("A sala Sala 101 está em manutenção das 10:00 às 12:00 de 01/12/2026. "
                         + "Escolha outro horário ou outra sala.");
@@ -57,14 +53,17 @@ class AgendaDeRecursosTest {
     @Test
     @DisplayName("MN-10: bloqueio ADMINISTRATIVO segue a mesma regra, e a mensagem diz que a sala está bloqueada")
     void bloqueioAdministrativoDizQueASalaEstaBloqueada() {
-        var bloqueio = Bloqueio.registrar(adm, sala101, TipoBloqueio.ADMINISTRATIVO, periodo("10:00", "12:00"),
-                "Evento institucional", instante("07:00"));
-        when(ocupacoes.sobrepostas(any(), any(), any())).thenReturn(bloqueio.getOcupacoes());
-
-        assertThatThrownBy(() -> agenda.garantirLivre(List.of(sala101), periodo("10:30", "11:30"), null, ana))
+        assertThatThrownBy(() -> conflitoCom(TipoBloqueio.ADMINISTRATIVO))
                 .isInstanceOf(ConflitoHorarioException.class)
                 .hasMessage("A sala Sala 101 está bloqueada das 10:00 às 12:00 de 01/12/2026. "
                         + "Escolha outro horário ou outra sala.");
+    }
+
+    /** A Sala 101 tem um bloqueio do tipo pedido das 10:00 às 12:00; a ana tenta reservar das 10:30 às 11:30. */
+    void conflitoCom(TipoBloqueio tipo) {
+        var bloqueio = Bloqueio.registrar(adm, sala101, tipo, periodo("10:00", "12:00"), "Motivo", instante("07:00"));
+        when(ocupacoes.sobrepostas(any(), any(), any())).thenReturn(bloqueio.getOcupacoes());
+        agenda.garantirLivre(List.of(sala101), periodo("10:30", "11:30"), null, ana);
     }
 
     static PeriodoReserva periodo(String inicio, String fim) {
