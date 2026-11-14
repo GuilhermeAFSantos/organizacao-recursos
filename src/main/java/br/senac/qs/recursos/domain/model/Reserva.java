@@ -155,6 +155,12 @@ public class Reserva {
         }
     }
 
+    /** O recurso faz parte desta reserva? Compara por id: o recurso da ocupação pode ser um proxy. */
+    public boolean incluiRecurso(Recurso recurso) {
+        return ocupacoes.stream().map(Ocupacao::getRecurso)
+                .anyMatch(r -> r == recurso || (r.getId() != null && r.getId().equals(recurso.getId())));
+    }
+
     private boolean temRecursoRestrito() {
         return ocupacoes.stream().anyMatch(ocupacao -> ocupacao.getRecurso().isRestrito());
     }
