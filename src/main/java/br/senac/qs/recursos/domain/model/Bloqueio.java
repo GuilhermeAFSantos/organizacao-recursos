@@ -55,6 +55,9 @@ public class Bloqueio {
 
     public static Bloqueio registrar(Usuario administrador, Recurso recurso, TipoBloqueio tipo,
                                      PeriodoReserva periodo, String motivo, Instant agora) {
+        if (administrador.getPerfil() != Perfil.ADMINISTRADOR) {
+            throw new OperacaoNaoPermitidaException("Somente um ADMINISTRADOR pode registrar ou encerrar bloqueios.");
+        }
         if (motivo == null || motivo.isBlank()) {
             throw new RegraNegocioException("Informe o motivo do bloqueio.");
         }
