@@ -25,10 +25,15 @@ class RegraAprovacaoTest {
     final Sala sala101 = new Sala("Sala 101", false);
     final Sala laboratorio = new Sala("Laboratório 3", true);
 
+    /** Reserva pedida pela ana, no período padrão, com os recursos informados. */
+    Reserva solicitar(Recurso... recursos) {
+        return Reserva.solicitar(ana, List.of(recursos), PERIODO, "Aula", AGORA);
+    }
+
     @Test
     @DisplayName("AP-01: reserva só com recursos não restritos nasce APROVADA pelo sistema")
     void reservaSoComRecursosNaoRestritosNasceAprovadaPeloSistema() {
-        var reserva = Reserva.solicitar(ana, List.of(sala101), PERIODO, "Aula", AGORA);
+        var reserva = solicitar(sala101);
 
         assertThat(reserva.getStatus()).isEqualTo(StatusReserva.APROVADA);
         assertThat(reserva.getAprovador()).isNull();
@@ -41,7 +46,7 @@ class RegraAprovacaoTest {
     @Test
     @DisplayName("AP-02: reserva com recurso restrito fica SOLICITADA e já segura o horário")
     void reservaComRecursoRestritoFicaSolicitadaESeguraOHorario() {
-        var reserva = Reserva.solicitar(ana, List.of(laboratorio), PERIODO, "Aula", AGORA);
+        var reserva = solicitar(laboratorio);
 
         assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
         assertThat(reserva.getOcupacoes()).singleElement().satisfies(o -> assertThat(o.isBloqueante()).isTrue());
