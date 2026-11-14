@@ -1,0 +1,14 @@
+# Normaliza fins de linha: a equipe usa Windows, mas o CI roda em Linux.
+* text=auto eol=lf
+
+# Scripts do Windows precisam de CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# O wrapper do Maven roda no Linux do CI: precisa de LF
+mvnw text eol=lf
+
+# Binários
+*.jar binary
+*.png binary
+*.jpg binary

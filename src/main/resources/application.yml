@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: organizacao-recursos
+
+  # Valores sensíveis vêm de variáveis de ambiente. Para rodar localmente use o perfil "local"
+  # (application-local.yml), que aponta para o PostgreSQL do docker-compose.
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/recursos}
+    username: ${DB_USER:recursos}
+    password: ${DB_PASSWORD:}
+
+  jpa:
+    # O schema é responsabilidade EXCLUSIVA do Flyway; o Hibernate só confere se as entidades batem.
+    hibernate:
+      ddl-auto: validate
+    # Evita consultas "escondidas" durante a serialização da resposta (lazy loading na view).
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  jackson:
+    # Rejeita campos desconhecidos no JSON: protege contra "mass assignment"
+    # (ex.: cliente tentando enviar "status": "APROVADA" na criação).
+    deserialization:
+      fail-on-unknown-properties: true
+    serialization:
+      write-dates-as-timestamps: false
+
+  mvc:
+    problemdetails:
+      enabled: true
+
+  # Mensagens (inclusive as do Bean Validation) sempre em português, independentemente do
+  # idioma do sistema operacional do servidor ou do cabeçalho Accept-Language do cliente.
+  web:
+    locale: pt_BR
+    locale-resolver: fixed
+
+# Tratamento seguro de erros: nunca expor stack trace, mensagem interna ou nome de exceção.
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+    include-exception: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+app:
+  jwt:
+    # Obrigatório (>= 32 bytes). Sem ele a aplicação NÃO sobe (falha rápida e explícita).
+    segredo: ${JWT_SECRET:}
+    expiracao: PT2H
+  notificacao:
+    url-base: ${NOTIFICACAO_URL:http://localhost:8089}

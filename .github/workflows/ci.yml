@@ -1,0 +1,78 @@
+# Integração contínua: build + testes unitários + testes de integração (Testcontainers)
+# + metas de cobertura (JaCoCo) + análise e Quality Gate do SonarCloud.
+#
+# CONFIGURAÇÃO DO SONARCLOUD (uma vez, feita por quem administra o repositório):
+#   1. Entre em https://sonarcloud.io com a conta do GitHub e importe este repositório.
+#   2. Em Administration > Analysis Method, DESLIGUE "Automatic Analysis" (a análise é feita aqui).
+#   3. Gere um token em My Account > Security.
+#   4. No GitHub: Settings > Secrets and variables > Actions > New repository secret
+#        Nome: SONAR_TOKEN   Valor: o token gerado no passo 3
+#   5. No pom.xml, troque CONFIGURAR-ORGANIZACAO por sua organização no SonarCloud
+#      (propriedades sonar.organization e sonar.projectKey).
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+# Cancela execuções antigas do mesmo PR/branch quando chega um novo push.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, testes e qualidade
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+    steps:
+      - name: Checkout (histórico completo, necessário para o SonarCloud identificar código novo)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Java 21 (Temurin) com cache do Maven
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Cache do SonarCloud
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # O runner ubuntu-latest já tem Docker, que o Testcontainers usa para subir o PostgreSQL.
+      - name: Build, testes e verificação de cobertura (falha abaixo de 80% linhas / 70% branches)
+        run: ./mvnw -B -ntp verify
+
+      # Secrets não ficam disponíveis em PRs vindos de forks; nesse caso a análise é pulada.
+      - name: Análise SonarCloud + Quality Gate
+        if: env.SONAR_TOKEN != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          ./mvnw -B -ntp org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          -Dsonar.qualitygate.wait=true
+
+      - name: Publicar relatórios de teste e cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-qualidade
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+            target/site/jacoco/
+          retention-days: 14

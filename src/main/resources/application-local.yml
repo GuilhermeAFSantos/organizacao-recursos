@@ -1,0 +1,12 @@
+# Perfil de DESENVOLVIMENTO LOCAL. Ativar com:
+#   ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+# Não use estes valores em nenhum ambiente compartilhado.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/recursos
+    username: recursos
+    password: recursos
+
+app:
+  jwt:
+    segredo: segredo-de-desenvolvimento-local-NAO-USAR-em-producao-0123456789

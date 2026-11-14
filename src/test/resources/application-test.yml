@@ -1,0 +1,11 @@
+# Perfil usado pelos testes automatizados (@ActiveProfiles("test")).
+# O banco NÃO é configurado aqui: cada teste de integração recebe um PostgreSQL descartável
+# do Testcontainers via @ServiceConnection (ver PostgresTestcontainersConfig).
+app:
+  jwt:
+    segredo: segredo-exclusivo-para-testes-automatizados-0123456789abcdef
+
+logging:
+  level:
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN

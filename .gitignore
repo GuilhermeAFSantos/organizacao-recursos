@@ -1,0 +1,26 @@
+# Build
+target/
+!.mvn/wrapper/maven-wrapper.properties
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+*.swp
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Segredos e configuração local (NUNCA commitar)
+.env
+*.env
+application-secret*.yml
+
+# Logs e resultados do JMeter
+*.log
+jmeter/resultados/
