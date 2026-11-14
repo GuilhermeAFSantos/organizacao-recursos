@@ -76,13 +76,21 @@ public class Bloqueio {
     public void encerrar(Usuario administrador, Instant agora) {
         var novoFim = proximoMinutoCheio(agora);
         if (novoFim.isAfter(periodo.inicio())) {
-            periodo = new PeriodoReserva(periodo.inicio(), novoFim);
-            for (Ocupacao ocupacao : ocupacoes) {
-                ocupacao.encurtarAte(novoFim);
-            }
+            encurtarAte(novoFim);
         } else {
-            ocupacoes.forEach(Ocupacao::liberar);
+            desfazer();
         }
+    }
+
+    /** Durante o bloqueio: passa a terminar em {@code novoFim}, e o recurso fica livre depois disso. */
+    private void encurtarAte(Instant novoFim) {
+        periodo = new PeriodoReserva(periodo.inicio(), novoFim);
+        ocupacoes.forEach(ocupacao -> ocupacao.encurtarAte(novoFim));
+    }
+
+    /** Antes de começar: o bloqueio inteiro deixa de ocupar o recurso. */
+    private void desfazer() {
+        ocupacoes.forEach(Ocupacao::liberar);
     }
 
     /** 10:37:42 → 10:38:00; 10:37:00 → 10:37:00. Mantém os períodos em minutos cheios (Q3). */
