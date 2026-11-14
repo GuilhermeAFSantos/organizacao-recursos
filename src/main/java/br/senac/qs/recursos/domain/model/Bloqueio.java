@@ -1,8 +1,12 @@
 package br.senac.qs.recursos.domain.model;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+
+import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
+import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -51,15 +55,54 @@ public class Bloqueio {
 
     public static Bloqueio registrar(Usuario administrador, Recurso recurso, TipoBloqueio tipo,
                                      PeriodoReserva periodo, String motivo, Instant agora) {
-        throw new UnsupportedOperationException("ainda não implementado");
+        exigirAdministrador(administrador);
+        if (motivo == null || motivo.isBlank()) {
+            throw new RegraNegocioException("Informe o motivo do bloqueio.");
+        }
+        var bloqueio = new Bloqueio();
+        bloqueio.tipo = tipo;
+        bloqueio.motivo = motivo;
+        bloqueio.periodo = periodo;
+        bloqueio.criadoPor = administrador;
+        bloqueio.criadoEm = agora;
+        bloqueio.ocupacoes.add(new Ocupacao(bloqueio, recurso, periodo));
+        return bloqueio;
     }
 
+    /**
+     * Q10: encerra antes do fim previsto. Durante o bloqueio, o período passa a terminar no próximo
+     * minuto cheio (Q3); antes de começar, o bloqueio inteiro é desfeito.
+     */
     public void encerrar(Usuario administrador, Instant agora) {
-        throw new UnsupportedOperationException("ainda não implementado");
+        exigirAdministrador(administrador);
+        if (!isAtivo()) {
+            throw new RegraNegocioException("Este bloqueio já foi encerrado.");
+        }
+        if (!agora.isBefore(periodo.fim())) {
+            throw new RegraNegocioException("Este bloqueio já terminou.");
+        }
+        var novoFim = agora.truncatedTo(ChronoUnit.MINUTES);
+        if (novoFim.isBefore(agora)) {
+            novoFim = novoFim.plus(1, ChronoUnit.MINUTES);
+        }
+        if (novoFim.isAfter(periodo.inicio())) {
+            periodo = new PeriodoReserva(periodo.inicio(), novoFim);
+            for (Ocupacao ocupacao : ocupacoes) {
+                ocupacao.encurtarAte(novoFim);
+            }
+        } else {
+            ocupacoes.forEach(Ocupacao::liberar);
+        }
     }
 
     public boolean isAtivo() {
-        return false;
+        return ocupacoes.stream().anyMatch(Ocupacao::isBloqueante);
+    }
+
+    private static void exigirAdministrador(Usuario usuario) {
+        if (usuario.getPerfil() != Perfil.ADMINISTRADOR) {
+            throw new OperacaoNaoPermitidaException("Somente um ADMINISTRADOR pode registrar ou encerrar bloqueios.");
+        }
     }
 
     public Long getId() {
