@@ -74,6 +74,7 @@ public class Bloqueio {
      * minuto cheio (Q3); antes de começar, o bloqueio inteiro é desfeito.
      */
     public void encerrar(Usuario administrador, Instant agora) {
+        exigirAdministrador(administrador);
         if (!isAtivo()) {
             throw new RegraNegocioException("Este bloqueio já foi encerrado.");
         }
