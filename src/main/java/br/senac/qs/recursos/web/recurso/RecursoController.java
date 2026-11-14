@@ -2,6 +2,7 @@ package br.senac.qs.recursos.web.recurso;
 
 import java.util.List;
 
+import br.senac.qs.recursos.application.Pagina;
 import br.senac.qs.recursos.application.recurso.ConsultarRecursos;
 import br.senac.qs.recursos.application.recurso.DadosMaterial;
 import br.senac.qs.recursos.application.recurso.DadosProfessor;
@@ -21,6 +22,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -141,6 +143,13 @@ public class RecursoController {
     @PreAuthorize(ADMINISTRADOR)
     public RecursoResponse reativar(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         return RecursoResponse.de(gerenciar.reativar(jwt.getSubject(), id));
+    }
+
+    /** Pesquisa (RF03). Ex.: {@code GET /api/recursos?tipo=SALA&capacidadeMinima=30&inicio=...&fim=...} */
+    @GetMapping("/recursos")
+    public Pagina<RecursoResponse> pesquisar(@Valid @ModelAttribute FiltroRecursosRequest filtros) {
+        return consultar.pesquisar(filtros.filtro(), filtros.pagina(), filtros.tamanho())
+                .converter(RecursoResponse::de);
     }
 
     @GetMapping("/recursos/{id}")

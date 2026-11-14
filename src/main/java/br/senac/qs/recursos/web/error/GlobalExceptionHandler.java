@@ -60,6 +60,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public static final String PROPRIEDADE_CODIGO_ERRO = "codigoErro";
     public static final String PROPRIEDADE_RESERVAS_EM_CONFLITO = "reservasEmConflito";
 
+    /** Falha de conversão (texto num campo numérico, valor fora da lista): a mensagem do Spring vem em inglês. */
+    static final String VALOR_EM_FORMATO_INVALIDO = "valor em formato inválido";
     static final String DETALHE_DADOS_INVALIDOS = "Um ou mais campos estão inválidos. Corrija-os e tente novamente.";
     static final String DETALHE_CORPO_ILEGIVEL = "O corpo da requisição está ausente ou malformado. Verifique o JSON, "
             + "os nomes dos campos e o formato das datas (ISO-8601 com fuso, ex.: 2026-11-20T08:00:00-03:00).";
@@ -171,12 +173,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // ---------------------------------------------------------------- exceções do Spring MVC
 
-    /** Bean Validation no corpo ({@code @Valid}): lista cada campo inválido com a mensagem. */
+    /**
+     * Bean Validation ({@code @Valid} no corpo ou nos filtros da query string): lista cada campo
+     * inválido com a mensagem. Falha de conversão ganha mensagem própria em vez do texto do Spring.
+     */
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(@NonNull MethodArgumentNotValidException ex,
             @NonNull HttpHeaders headers, @NonNull HttpStatusCode status, @NonNull WebRequest request) {
         var erros = ex.getBindingResult().getFieldErrors().stream()
-                .map(f -> new ErroCampo(f.getField(), f.getDefaultMessage()))
+                .map(f -> new ErroCampo(f.getField(),
+                        f.isBindingFailure() ? VALOR_EM_FORMATO_INVALIDO : f.getDefaultMessage()))
                 .sorted(Comparator.comparing(ErroCampo::campo))
                 .toList();
         return ResponseEntity.badRequest().headers(headers).body(dadosInvalidos(erros, caminho(request)));

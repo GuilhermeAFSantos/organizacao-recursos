@@ -4,9 +4,10 @@ import java.util.Optional;
 
 import br.senac.qs.recursos.domain.model.Recurso;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
-public interface RecursoRepository extends JpaRepository<Recurso, Long> {
+public interface RecursoRepository extends JpaRepository<Recurso, Long>, JpaSpecificationExecutor<Recurso> {
 
     /**
      * Trava a linha do recurso até o fim da transação ({@code SELECT ... FOR NO KEY UPDATE}).
