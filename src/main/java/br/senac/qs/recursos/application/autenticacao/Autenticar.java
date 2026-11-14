@@ -1,7 +1,7 @@
 package br.senac.qs.recursos.application.autenticacao;
 
-import java.util.UUID;
 import java.time.Clock;
+import java.util.UUID;
 
 import br.senac.qs.recursos.domain.exception.CredenciaisInvalidasException;
 import br.senac.qs.recursos.domain.exception.MuitasTentativasException;
