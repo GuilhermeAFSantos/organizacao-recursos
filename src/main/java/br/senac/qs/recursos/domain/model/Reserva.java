@@ -224,11 +224,13 @@ public class Reserva {
     }
 
     public void iniciarUso(Usuario responsavel, Instant agora) {
+        exigirResponsavel(responsavel, "registrar o início de uso de");
         exigirTransicaoPara(EM_USO);
         mudarPara(EM_USO, responsavel, null, agora);
     }
 
     public void registrarNaoComparecimento(Usuario responsavel, String motivo, Instant agora) {
+        exigirResponsavel(responsavel, "registrar o não comparecimento em");
         exigirTransicaoPara(NAO_COMPARECEU);
         if (!jaComecou(agora)) {
             throw new RegraNegocioException(
@@ -238,6 +240,7 @@ public class Reserva {
     }
 
     public void concluir(Usuario responsavel, Instant agora) {
+        exigirResponsavel(responsavel, "concluir");
         exigirTransicaoPara(CONCLUIDA);
         mudarPara(CONCLUIDA, responsavel, null, agora);
     }
