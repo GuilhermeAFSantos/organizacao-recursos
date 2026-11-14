@@ -81,10 +81,7 @@ public class Bloqueio {
         if (!agora.isBefore(periodo.fim())) {
             throw new RegraNegocioException("Este bloqueio já terminou.");
         }
-        var novoFim = agora.truncatedTo(ChronoUnit.MINUTES);
-        if (novoFim.isBefore(agora)) {
-            novoFim = novoFim.plus(1, ChronoUnit.MINUTES);
-        }
+        var novoFim = proximoMinutoCheio(agora);
         if (novoFim.isAfter(periodo.inicio())) {
             periodo = new PeriodoReserva(periodo.inicio(), novoFim);
             for (Ocupacao ocupacao : ocupacoes) {
@@ -97,6 +94,12 @@ public class Bloqueio {
 
     public boolean isAtivo() {
         return ocupacoes.stream().anyMatch(Ocupacao::isBloqueante);
+    }
+
+    /** 10:37:42 → 10:38:00; 10:37:00 → 10:37:00. Mantém os períodos em minutos cheios (Q3). */
+    private static Instant proximoMinutoCheio(Instant instante) {
+        var truncado = instante.truncatedTo(ChronoUnit.MINUTES);
+        return truncado.equals(instante) ? truncado : truncado.plus(1, ChronoUnit.MINUTES);
     }
 
     private static void exigirAdministrador(Usuario usuario) {
