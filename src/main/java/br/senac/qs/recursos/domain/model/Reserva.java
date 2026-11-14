@@ -171,17 +171,13 @@ public class Reserva {
     }
 
     public void aprovar(Usuario responsavel, Instant agora) {
-        if (responsavel.getPerfil() == Perfil.SOLICITANTE) {
-            throw new OperacaoNaoPermitidaException("Somente um RESPONSAVEL pode aprovar reservas.");
-        }
+        recusarSolicitante(responsavel, "aprovar");
         this.aprovador = responsavel;
         mudarPara(APROVADA, responsavel.getId(), responsavel.getEmail(), null, agora);
     }
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
-        if (responsavel.getPerfil() == Perfil.SOLICITANTE) {
-            throw new OperacaoNaoPermitidaException("Somente um RESPONSAVEL pode rejeitar reservas.");
-        }
+        recusarSolicitante(responsavel, "rejeitar");
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
@@ -204,6 +200,12 @@ public class Reserva {
         var retiradas = List.copyOf(mudancasPendentes);
         mudancasPendentes.clear();
         return retiradas;
+    }
+
+    private static void recusarSolicitante(Usuario autor, String acao) {
+        if (autor.getPerfil() == Perfil.SOLICITANTE) {
+            throw new OperacaoNaoPermitidaException("Somente um RESPONSAVEL pode " + acao + " reservas.");
+        }
     }
 
     /** Muda o estado e registra a mudança para a auditoria (RC08), sempre do mesmo jeito. */
