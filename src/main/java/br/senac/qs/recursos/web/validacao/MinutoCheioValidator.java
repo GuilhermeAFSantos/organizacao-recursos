@@ -9,6 +9,6 @@ public class MinutoCheioValidator implements ConstraintValidator<MinutoCheio, Of
 
     @Override
     public boolean isValid(OffsetDateTime horario, ConstraintValidatorContext contexto) {
-        return true;
+        return horario == null || (horario.getSecond() == 0 && horario.getNano() == 0);
     }
 }
