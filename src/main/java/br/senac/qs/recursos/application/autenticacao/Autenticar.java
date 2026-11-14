@@ -1,5 +1,6 @@
 package br.senac.qs.recursos.application.autenticacao;
 
+import java.util.UUID;
 import java.time.Clock;
 
 import br.senac.qs.recursos.domain.exception.CredenciaisInvalidasException;
@@ -34,7 +35,9 @@ public class Autenticar {
         this.senhas = senhas;
         this.emissor = emissor;
         this.clock = clock;
-        this.hashFicticio = senhas.encode("senha-ficticia-para-tempo-constante-0");
+        // Valor aleatório a cada inicialização: nenhum texto fixo que pareça senha no código (SonarCloud
+        // S6437) e nada que alguém possa adivinhar. Só serve para gastar o mesmo tempo do BCrypt.
+        this.hashFicticio = senhas.encode(UUID.randomUUID().toString());
     }
 
     public record Sessao(String token, java.time.Instant expiraEm, Perfil perfil) {
