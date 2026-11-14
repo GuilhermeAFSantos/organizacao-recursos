@@ -3,6 +3,7 @@ package br.senac.qs.recursos.domain.model;
 import java.time.Instant;
 
 import br.senac.qs.recursos.domain.exception.RegraNegocioException;
+import jakarta.persistence.Embeddable;
 
 /**
  * Intervalo de tempo de uma reserva: <b>value object</b> imutável e sempre válido.
@@ -13,6 +14,7 @@ import br.senac.qs.recursos.domain.exception.RegraNegocioException;
  * <p>Usa {@link Instant} (instante absoluto, sem fuso). Assim "10:00-03:00" e "13:00Z" são o
  * mesmo instante, e a comparação nunca depende de como o cliente escreveu o horário.
  */
+@Embeddable
 public record PeriodoReserva(Instant inicio, Instant fim) {
 
     static final String INICIO_OBRIGATORIO = "O início da reserva é obrigatório.";

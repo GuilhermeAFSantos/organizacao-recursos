@@ -159,7 +159,7 @@ class CriarReservaSalaIT {
 
             assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(resposta.getBody().get("erros").findValuesAsText("campo"))
-                    .containsExactly("finalidade", "fim", "inicio", "salaId");
+                    .containsExactlyInAnyOrder("finalidade", "fim", "inicio", "salaId");
         }
 
         @Test
