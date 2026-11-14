@@ -171,12 +171,17 @@ public class Reserva {
     }
 
     public void aprovar(Usuario responsavel, Instant agora) {
+        if (responsavel.getPerfil() == Perfil.SOLICITANTE) {
+            throw new OperacaoNaoPermitidaException("Somente um RESPONSAVEL pode aprovar reservas.");
+        }
         this.aprovador = responsavel;
         mudarPara(APROVADA, responsavel.getId(), responsavel.getEmail(), null, agora);
     }
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
-        // Prática de TDD estrito: regra removida, a ser refeita cenário a cenário.
+        if (responsavel.getPerfil() == Perfil.SOLICITANTE) {
+            throw new OperacaoNaoPermitidaException("Somente um RESPONSAVEL pode rejeitar reservas.");
+        }
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
