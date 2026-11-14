@@ -128,6 +128,11 @@ public class Reserva {
         this.periodo = novo;
         ocupacoes.forEach(ocupacao -> ocupacao.moverPara(novo));
         this.atualizadoEm = agora;
+        if (status == APROVADA && temRecursoRestrito()) {
+            this.status = SOLICITADA;
+            this.aprovador = null;
+            this.motivoStatus = "Horário alterado: a reserva precisa de nova aprovação.";
+        }
         var motivo = "Horário alterado de " + periodoAnterior.descrever() + " para " + novo.descrever() + ".";
         mudancasPendentes.add(new MudancaDeEstado(MudancaDeEstado.ALTERACAO, estadoAnterior, status, autor.getId(),
                 autor.getEmail(), motivo, agora));
