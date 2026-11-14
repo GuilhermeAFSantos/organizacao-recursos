@@ -39,6 +39,7 @@ public class Reserva {
     static final String MOTIVO_APROVACAO_AUTOMATICA = "Nenhum recurso é restrito: aprovação automática.";
     static final String MOTIVO_REAPROVACAO = "Horário alterado: a reserva precisa de nova aprovação.";
 
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -129,9 +130,7 @@ public class Reserva {
         ocupacoes.forEach(ocupacao -> ocupacao.moverPara(novo));
         this.atualizadoEm = agora;
         if (status == APROVADA && temRecursoRestrito()) {
-            this.status = SOLICITADA;
-            this.aprovador = null;
-            this.motivoStatus = MOTIVO_REAPROVACAO;
+            voltarParaNovaAprovacao();
         }
         var motivo = "Horário alterado de " + periodoAnterior.descrever() + " para " + novo.descrever() + ".";
         mudancasPendentes.add(new MudancaDeEstado(MudancaDeEstado.ALTERACAO, estadoAnterior, status, autor.getId(),
@@ -144,19 +143,46 @@ public class Reserva {
      * estado → horário atual → horário novo.
      */
     public void exigirAlteravel(Usuario autor, PeriodoReserva novo, Instant agora) {
-        if (!autor.mesmaPessoaQue(solicitante) && autor.getPerfil() != Perfil.ADMINISTRADOR) {
+        if (!eDonaOuAdministrador(autor)) {
             throw new OperacaoNaoPermitidaException(
                     "Somente quem solicitou a reserva ou um ADMINISTRADOR pode alterá-la.");
         }
         if (status != SOLICITADA && status != APROVADA) {
             throw new RegraNegocioException("Só é possível alterar o horário de reservas solicitadas ou aprovadas.");
         }
-        if (!agora.isBefore(periodo.inicio())) {
+        if (jaComecou(agora)) {
             throw new RegraNegocioException("O horário só pode ser alterado antes do início da reserva.");
         }
         if (!agora.isBefore(novo.inicio())) {
             throw new RegraNegocioException("O novo horário deve começar no futuro.");
         }
+    }
+
+    /** RF07/RC06: basta um recurso restrito para a reserva inteira precisar de aprovação. */
+    private boolean temRecursoRestrito() {
+        return ocupacoes.stream().anyMatch(ocupacao -> ocupacao.getRecurso().isRestrito());
+    }
+
+    /** D1: sem recurso restrito, não há quem precise aprovar; o sistema aprova e isso fica auditado. */
+    private void aprovarAutomaticamente(Instant agora) {
+        mudarPara(APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA, MOTIVO_APROVACAO_AUTOMATICA, agora);
+    }
+
+    /** Quem pode mexer na reserva sem ser RESPONSAVEL: quem a solicitou ou um ADMINISTRADOR. */
+    private boolean eDonaOuAdministrador(Usuario autor) {
+        return autor.mesmaPessoaQue(solicitante) || autor.getPerfil() == Perfil.ADMINISTRADOR;
+    }
+
+    /** Q11: a aprovação valia para o horário antigo; com recurso restrito, alguém precisa aprovar de novo. */
+    private void voltarParaNovaAprovacao() {
+        this.status = SOLICITADA;
+        this.aprovador = null;
+        this.motivoStatus = MOTIVO_REAPROVACAO;
+    }
+
+    /** O horário reservado já começou (ou passou) neste instante? */
+    private boolean jaComecou(Instant agora) {
+        return !agora.isBefore(periodo.inicio());
     }
 
     /** O recurso faz parte desta reserva? Compara por id: o recurso da ocupação pode ser um proxy. */
@@ -165,23 +191,11 @@ public class Reserva {
                 .anyMatch(r -> r == recurso || (r.getId() != null && r.getId().equals(recurso.getId())));
     }
 
-    private boolean temRecursoRestrito() {
-        return ocupacoes.stream().anyMatch(ocupacao -> ocupacao.getRecurso().isRestrito());
-    }
-
-    /** D1: sem recurso restrito, não há quem precise aprovar; o sistema aprova e isso fica auditado. */
-    private void aprovarAutomaticamente(Instant agora) {
-        var anterior = status;
-        this.status = APROVADA;
-        this.motivoStatus = MOTIVO_APROVACAO_AUTOMATICA;
-        registrar(anterior, APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA, MOTIVO_APROVACAO_AUTOMATICA, agora);
-    }
-
     public void aprovar(Usuario responsavel, Instant agora) {
         exigirResponsavel(responsavel, "aprovar");
         proibirDecisaoSobreAPropria(responsavel);
         exigirTransicaoPara(APROVADA);
-        if (!agora.isBefore(periodo.inicio())) {
+        if (jaComecou(agora)) {
             throw new RegraNegocioException("A reserva só pode ser aprovada antes do horário de início.");
         }
         this.aprovador = responsavel;
@@ -199,12 +213,12 @@ public class Reserva {
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
-        if (!autor.mesmaPessoaQue(solicitante) && autor.getPerfil() != Perfil.ADMINISTRADOR) {
+        if (!eDonaOuAdministrador(autor)) {
             throw new OperacaoNaoPermitidaException(
                     "Somente quem solicitou a reserva ou um ADMINISTRADOR pode cancelá-la.");
         }
         exigirTransicaoPara(CANCELADA);
-        if (status == APROVADA && !agora.isBefore(periodo.inicio())) {
+        if (status == APROVADA && jaComecou(agora)) {
             throw new RegraNegocioException("Uma reserva aprovada só pode ser cancelada antes do horário de início.");
         }
         mudarPara(CANCELADA, autor, motivo, agora);
@@ -219,7 +233,7 @@ public class Reserva {
     public void registrarNaoComparecimento(Usuario responsavel, String motivo, Instant agora) {
         exigirResponsavel(responsavel, "registrar o não comparecimento em");
         exigirTransicaoPara(NAO_COMPARECEU);
-        if (agora.isBefore(periodo.inicio())) {
+        if (!jaComecou(agora)) {
             throw new RegraNegocioException(
                     "O não comparecimento só pode ser registrado a partir do horário de início.");
         }
@@ -244,6 +258,7 @@ public class Reserva {
         }
     }
 
+    /** Segregação de funções: ninguém decide sobre a reserva que ele mesmo pediu. */
     private void proibirDecisaoSobreAPropria(Usuario responsavel) {
         if (responsavel.mesmaPessoaQue(solicitante)) {
             throw new OperacaoNaoPermitidaException(
@@ -251,6 +266,7 @@ public class Reserva {
         }
     }
 
+    /** RC05: só as transições da tabela de StatusReserva são permitidas. */
     private void exigirTransicaoPara(StatusReserva destino) {
         if (!status.podeIrPara(destino)) {
             throw new TransicaoInvalidaException("Não é possível mudar a reserva de " + status + " para "
@@ -258,7 +274,8 @@ public class Reserva {
         }
     }
 
-    private void mudarPara(StatusReserva novo, Usuario autor, String motivo, Instant agora) {
+    /** Muda o estado e registra a mudança para a auditoria (RC08), sempre do mesmo jeito. */
+    private void mudarPara(StatusReserva novo, Long autorId, String autorEmail, String motivo, Instant agora) {
         var anterior = status;
         this.status = novo;
         this.motivoStatus = motivo;
@@ -266,7 +283,11 @@ public class Reserva {
         if (novo.liberaHorario()) {
             ocupacoes.forEach(Ocupacao::liberar);
         }
-        registrar(anterior, novo, autor.getId(), autor.getEmail(), motivo, agora);
+        registrar(anterior, novo, autorId, autorEmail, motivo, agora);
+    }
+
+    private void mudarPara(StatusReserva novo, Usuario autor, String motivo, Instant agora) {
+        mudarPara(novo, autor.getId(), autor.getEmail(), motivo, agora);
     }
 
     private void registrar(StatusReserva anterior, StatusReserva novo, Long autorId, String autorEmail,
