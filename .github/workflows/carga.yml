@@ -1,0 +1,108 @@
+name: Teste de carga
+
+# RNF06: a aplicação de verdade (jar + PostgreSQL) sob carga com o JMeter. Roda a cada mudança de
+# código na main e sob demanda (Actions → Teste de carga → Run workflow). Reprova se houver erro ou
+# se alguma meta de tempo de resposta não for cumprida (MetasDeCarga, testada em MetasDeCargaTest). O relatório
+# HTML do JMeter fica como artefato da execução.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/main/**'
+      - 'jmeter/**'
+      - 'src/test/java/br/senac/qs/recursos/carga/**'
+      - 'pom.xml'
+      - '.github/workflows/carga.yml'
+  workflow_dispatch:
+    inputs:
+      usuarios:
+        description: 'Usuários simultâneos'
+        default: '50'
+      duracao:
+        description: 'Duração em segundos'
+        default: '120'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carga-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  carga:
+    name: JMeter contra a aplicação em execução
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: recursos
+          POSTGRES_USER: recursos
+          # Banco descartável, só desta execução: a senha muda a cada run.
+          POSTGRES_PASSWORD: carga-${{ github.run_id }}-${{ github.run_attempt }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U recursos"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/recursos
+      DB_USER: recursos
+      DB_PASSWORD: carga-${{ github.run_id }}-${{ github.run_attempt }}
+      ADMIN_EMAIL: admin-carga@senac.br
+      # Entradas do disparo manual passam por variáveis de ambiente, nunca direto no script.
+      USUARIOS: ${{ inputs.usuarios || '50' }}
+      DURACAO: ${{ inputs.duracao || '120' }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Java 21 (Temurin) com cache do Maven
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Empacotar a aplicação
+        run: ./mvnw -B -ntp -DskipTests package
+
+      - name: Subir a aplicação
+        run: |
+          ADMIN_SENHA="Carga$(openssl rand -hex 8)1"
+          echo "::add-mask::$ADMIN_SENHA"
+          echo "ADMIN_SENHA=$ADMIN_SENHA" >> "$GITHUB_ENV"
+          export ADMIN_SENHA
+          export JWT_SECRET="$(openssl rand -base64 48)"
+          nohup java -Xmx512m -jar target/organizacao-recursos-*.jar > aplicacao.log 2>&1 &
+          curl -sf --retry 60 --retry-connrefused --retry-delay 2 http://localhost:8080/actuator/health
+
+      - name: Teste de carga (JMeter)
+        run: >
+          ./mvnw -B -ntp -Pcarga jmeter:configure@configuration jmeter:jmeter jmeter:results
+          -Dcarga.adminEmail="$ADMIN_EMAIL" -Dcarga.adminSenha="$ADMIN_SENHA"
+          -Dcarga.usuarios="$USUARIOS" -Dcarga.duracao="$DURACAO"
+
+      - name: Conferir as metas de tempo de resposta e de erros
+        run: >
+          ./mvnw -B -ntp -q test-compile org.codehaus.mojo:exec-maven-plugin:3.6.4:java
+          -Dexec.mainClass=br.senac.qs.recursos.carga.MetasDeCarga -Dexec.classpathScope=test
+
+      - name: Publicar relatório do JMeter
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-carga
+          path: |
+            target/jmeter/reports/
+            target/jmeter/results/
+            target/jmeter/logs/
+            aplicacao.log
+          retention-days: 30

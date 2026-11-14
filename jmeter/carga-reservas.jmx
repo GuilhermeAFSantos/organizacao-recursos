@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Teste de carga da Organização de Recursos (RNF06).
+
+  1. Preparação (setUp, 1 usuário): o ADMINISTRADOR entra e cria, pela própria API, as salas do
+     bloco CARGA e um SOLICITANTE para cada usuário virtual.
+  2. Carga: N professores simultâneos (padrão 50) entram uma vez e repetem, até o fim da duração:
+     pesquisar salas livres → reservar uma delas → listar as próprias reservas, com pausa de
+     0,3 a 1 s entre as ações (comportamento humano, não um laço sem pausa).
+
+  Reservar uma sala que outro usuário acabou de pegar devolve 409 (conflito evitado): é o
+  comportamento correto, por isso 409 conta como sucesso nesse passo. Qualquer 5xx é erro.
+
+  Parâmetros (-J ou propriedades do plugin): host, porta, usuarios, rampa, duracao, salas,
+  disputa, adminEmail, adminSenha. Metas: MetasDeCarga (src/test/java/.../carga).
+-->
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Carga de reservas">
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="HOST" elementType="Argument">
+            <stringProp name="Argument.name">HOST</stringProp>
+            <stringProp name="Argument.value">${__P(host,localhost)}</stringProp>
+          </elementProp>
+          <elementProp name="PORTA" elementType="Argument">
+            <stringProp name="Argument.name">PORTA</stringProp>
+            <stringProp name="Argument.value">${__P(porta,8080)}</stringProp>
+          </elementProp>
+          <elementProp name="USUARIOS" elementType="Argument">
+            <stringProp name="Argument.name">USUARIOS</stringProp>
+            <stringProp name="Argument.value">${__P(usuarios,50)}</stringProp>
+          </elementProp>
+          <elementProp name="RAMPA" elementType="Argument">
+            <stringProp name="Argument.name">RAMPA</stringProp>
+            <stringProp name="Argument.value">${__P(rampa,30)}</stringProp>
+          </elementProp>
+          <elementProp name="DURACAO" elementType="Argument">
+            <stringProp name="Argument.name">DURACAO</stringProp>
+            <stringProp name="Argument.value">${__P(duracao,120)}</stringProp>
+          </elementProp>
+          <elementProp name="SALAS" elementType="Argument">
+            <stringProp name="Argument.name">SALAS</stringProp>
+            <stringProp name="Argument.value">${__P(salas,20)}</stringProp>
+          </elementProp>
+          <elementProp name="ADMIN_EMAIL" elementType="Argument">
+            <stringProp name="Argument.name">ADMIN_EMAIL</stringProp>
+            <stringProp name="Argument.value">${__P(adminEmail,)}</stringProp>
+          </elementProp>
+          <elementProp name="ADMIN_SENHA" elementType="Argument">
+            <stringProp name="Argument.name">ADMIN_SENHA</stringProp>
+            <stringProp name="Argument.value">${__P(adminSenha,)}</stringProp>
+          </elementProp>
+          <elementProp name="EXECUCAO" elementType="Argument">
+            <stringProp name="Argument.name">EXECUCAO</stringProp>
+            <stringProp name="Argument.value">${__time(,)}</stringProp>
+          </elementProp>
+          <elementProp name="SENHA_USUARIOS" elementType="Argument">
+            <stringProp name="Argument.name">SENHA_USUARIOS</stringProp>
+            <stringProp name="Argument.value">Carga2026senha</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+    </TestPlan>
+    <hashTree>
+      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="Servidor">
+        <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+        <stringProp name="HTTPSampler.port">${PORTA}</stringProp>
+        <stringProp name="HTTPSampler.protocol">http</stringProp>
+        <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+        <stringProp name="HTTPSampler.connect_timeout">5000</stringProp>
+        <stringProp name="HTTPSampler.response_timeout">30000</stringProp>
+        <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments">
+          <collectionProp name="Arguments.arguments"/>
+        </elementProp>
+      </ConfigTestElement>
+      <hashTree/>
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Cabeçalhos JSON">
+        <collectionProp name="HeaderManager.headers">
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Content-Type</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Accept</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+        </collectionProp>
+      </HeaderManager>
+      <hashTree/>
+
+      <!-- ============================================================ preparação -->
+      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="Preparação">
+        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">1</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+      </SetupThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Preparação: login do administrador">
+          <stringProp name="HTTPSampler.path">/api/auth/login</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"email":"${ADMIN_EMAIL}","senha":"${ADMIN_SENHA}"}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="token do administrador">
+            <stringProp name="JSONPostProcessor.referenceNames">tokenAdmin</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">SEM_TOKEN</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+        </hashTree>
+        <GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="Com o token do administrador"/>
+        <hashTree>
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Token do administrador">
+          <collectionProp name="HeaderManager.headers">
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">Authorization</stringProp>
+              <stringProp name="Header.value">Bearer ${tokenAdmin}</stringProp>
+            </elementProp>
+          </collectionProp>
+        </HeaderManager>
+        <hashTree/>
+        <LoopController guiclass="LoopControlPanel" testclass="LoopController" testname="Uma vez por sala">
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+          <stringProp name="LoopController.loops">${SALAS}</stringProp>
+        </LoopController>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Preparação: cadastrar sala">
+            <stringProp name="HTTPSampler.path">/api/salas</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                  <stringProp name="Argument.value">{"nome":"Sala carga ${EXECUCAO}-${__counter(TRUE,)}","restrito":false,"capacidade":40,"bloco":"CARGA","andar":1,"tipoSala":"AULA"}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree/>
+        </hashTree>
+        <LoopController guiclass="LoopControlPanel" testclass="LoopController" testname="LoopProfessores">
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+          <stringProp name="LoopController.loops">${USUARIOS}</stringProp>
+        </LoopController>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Preparação: cadastrar professor">
+            <stringProp name="HTTPSampler.path">/api/usuarios</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                  <stringProp name="Argument.value">{"nome":"Professor de carga","email":"carga-${EXECUCAO}-${__intSum(${__jm__LoopProfessores__idx},1,)}@senac.br","senha":"${SENHA_USUARIOS}","perfil":"SOLICITANTE"}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree/>
+        </hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Preparação: cadastrar sala disputada">
+          <stringProp name="HTTPSampler.path">/api/salas</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"nome":"Sala disputada ${EXECUCAO}","restrito":false,"capacidade":40,"bloco":"DISPUTA","andar":1,"tipoSala":"AULA"}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="id da sala disputada para os outros grupos">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <boolProp name="cacheKey">true</boolProp>
+            <stringProp name="script">def sala = new groovy.json.JsonSlurper().parseText(prev.getResponseDataAsString())
+props.put('salaDisputada', sala.id.toString())</stringProp>
+          </JSR223PostProcessor>
+          <hashTree/>
+        </hashTree>
+        </hashTree>
+      </hashTree>
+
+      <!-- ============================================================ disputa
+        Poucos usuários, UMA sala e só 15 horários possíveis: muitas tentativas simultâneas pelo
+        mesmo horário. Mede a proteção contra dupla reserva (RC03) sob carga: cada tentativa deve
+        terminar em 201 (ganhou) ou 409 (conflito evitado), rápido e nunca em 5xx. -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Disputa pelo mesmo horário">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">${__P(disputa,10)}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${RAMPA}</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">${DURACAO}</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <OnceOnlyController guiclass="OnceOnlyControllerGui" testclass="OnceOnlyController" testname="Entrar uma vez"/>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Login">
+            <stringProp name="HTTPSampler.path">/api/auth/login</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                  <stringProp name="Argument.value">{"email":"carga-${EXECUCAO}-${__threadNum}@senac.br","senha":"${SENHA_USUARIOS}"}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="token do professor">
+              <stringProp name="JSONPostProcessor.referenceNames">token</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">SEM_TOKEN</stringProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree>
+        </hashTree>
+        <GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="Com o token do professor"/>
+        <hashTree>
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Token do professor">
+            <collectionProp name="HeaderManager.headers">
+              <elementProp name="" elementType="Header">
+                <stringProp name="Header.name">Authorization</stringProp>
+                <stringProp name="Header.value">Bearer ${token}</stringProp>
+              </elementProp>
+            </collectionProp>
+          </HeaderManager>
+          <hashTree/>
+          <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Pausa entre tentativas (0,1 a 0,4 s)">
+            <stringProp name="ConstantTimer.delay">100</stringProp>
+            <stringProp name="RandomTimer.range">300</stringProp>
+          </UniformRandomTimer>
+          <hashTree/>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Disputar o mesmo horário">
+            <stringProp name="HTTPSampler.path">/api/reservas</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                  <stringProp name="Argument.value">{"salaId":${__P(salaDisputada)},"inicio":"${inicioDisputa}","fim":"${fimDisputa}","finalidade":"Disputa de carga"}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Um de 15 horários (5 dias × 3 horas)">
+              <stringProp name="scriptLanguage">groovy</stringProp>
+              <boolProp name="cacheKey">true</boolProp>
+              <stringProp name="script">def sorteio = java.util.concurrent.ThreadLocalRandom.current()
+def dia = java.time.LocalDate.now(java.time.ZoneId.of('America/Sao_Paulo')).plusDays(200 + sorteio.nextInt(5))
+def hora = 8 + sorteio.nextInt(3)
+vars.put('inicioDisputa', dia.toString() + 'T' + String.format('%02d', hora) + ':00:00-03:00')
+vars.put('fimDisputa', dia.toString() + 'T' + String.format('%02d', hora + 1) + ':00:00-03:00')</stringProp>
+            </JSR223PreProcessor>
+            <hashTree/>
+            <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="201 ganhou ou 409 conflito evitado">
+              <collectionProp name="Asserion.test_strings">
+                <stringProp name="1">201|409</stringProp>
+              </collectionProp>
+              <stringProp name="Assertion.custom_message">Esperado 201 (ganhou) ou 409 (conflito evitado)</stringProp>
+              <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+              <boolProp name="Assertion.assume_success">true</boolProp>
+              <intProp name="Assertion.test_type">1</intProp>
+            </ResponseAssertion>
+            <hashTree/>
+          </hashTree>
+        </hashTree>
+      </hashTree>
+
+      <!-- ============================================================ carga -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Professores reservando">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">${USUARIOS}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${RAMPA}</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">${DURACAO}</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <OnceOnlyController guiclass="OnceOnlyControllerGui" testclass="OnceOnlyController" testname="Entrar uma vez"/>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Login">
+            <stringProp name="HTTPSampler.path">/api/auth/login</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                  <stringProp name="Argument.value">{"email":"carga-${EXECUCAO}-${__threadNum}@senac.br","senha":"${SENHA_USUARIOS}"}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="token do professor">
+              <stringProp name="JSONPostProcessor.referenceNames">token</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">SEM_TOKEN</stringProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree>
+        </hashTree>
+        <!-- O token só vale DEPOIS do login: no próprio login, um "Bearer ${token}" vazio seria recusado (401). -->
+        <GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="Com o token do professor"/>
+        <hashTree>
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Token do professor">
+          <collectionProp name="HeaderManager.headers">
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">Authorization</stringProp>
+              <stringProp name="Header.value">Bearer ${token}</stringProp>
+            </elementProp>
+          </collectionProp>
+        </HeaderManager>
+        <hashTree/>
+        <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Pausa entre ações (0,3 a 1 s)">
+          <stringProp name="ConstantTimer.delay">300</stringProp>
+          <stringProp name="RandomTimer.range">700</stringProp>
+        </UniformRandomTimer>
+        <hashTree/>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Pesquisar salas livres">
+          <stringProp name="HTTPSampler.path">/api/recursos?tipo=SALA&amp;bloco=CARGA&amp;tamanho=50&amp;inicio=${inicio}&amp;fim=${fim}</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Horário aleatório (1 h, nos próximos 180 dias)">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <boolProp name="cacheKey">true</boolProp>
+            <stringProp name="script">def sorteio = java.util.concurrent.ThreadLocalRandom.current()
+def dia = java.time.LocalDate.now(java.time.ZoneId.of('America/Sao_Paulo')).plusDays(1 + sorteio.nextInt(180))
+def hora = 7 + sorteio.nextInt(14)
+vars.put('inicio', dia.toString() + 'T' + String.format('%02d', hora) + ':00:00-03:00')
+vars.put('fim', dia.toString() + 'T' + String.format('%02d', hora + 1) + ':00:00-03:00')</stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="uma sala livre ao acaso">
+            <stringProp name="JSONPostProcessor.referenceNames">salaId</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.itens[*].id</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">0</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">NENHUMA</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+        </hashTree>
+        <IfController guiclass="IfControllerPanel" testclass="IfController" testname="Se encontrou sala livre">
+          <stringProp name="IfController.condition">${__groovy(vars.get("salaId") != "NENHUMA",)}</stringProp>
+          <boolProp name="IfController.evaluateAll">false</boolProp>
+          <boolProp name="IfController.useExpression">true</boolProp>
+        </IfController>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Criar reserva">
+            <stringProp name="HTTPSampler.path">/api/reservas</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                  <stringProp name="Argument.value">{"salaId":${salaId},"inicio":"${inicio}","fim":"${fim}","finalidade":"Teste de carga"}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="201 criada ou 409 conflito evitado">
+              <collectionProp name="Asserion.test_strings">
+                <stringProp name="1">201|409</stringProp>
+              </collectionProp>
+              <stringProp name="Assertion.custom_message">Esperado 201 (criada) ou 409 (conflito evitado)</stringProp>
+              <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+              <boolProp name="Assertion.assume_success">true</boolProp>
+              <intProp name="Assertion.test_type">1</intProp>
+            </ResponseAssertion>
+            <hashTree/>
+          </hashTree>
+        </hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Listar minhas reservas">
+          <stringProp name="HTTPSampler.path">/api/reservas?tamanho=20</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
+        </hashTree>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

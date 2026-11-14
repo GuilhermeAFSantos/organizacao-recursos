@@ -292,4 +292,77 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Teste de carga (RNF06) com o JMeter, sem instalá-lo: o plugin baixa o JMeter e roda
+            jmeter/carga-reservas.jmx contra uma aplicação JÁ EM EXECUÇÃO. Não faz parte do verify.
+            Uso (ver README):
+              ./mvnw -Pcarga jmeter:configure@configuration jmeter:jmeter jmeter:results
+                     -Dcarga.adminEmail=... -Dcarga.adminSenha=...
+            Relatório HTML: target/jmeter/reports/carga-reservas/index.html
+            Metas (p95 e erros): ./mvnw test-compile exec:java -Dexec.classpathScope=test
+                     -Dexec.mainClass=br.senac.qs.recursos.carga.MetasDeCarga
+            Antes de repetir, apague target/jmeter (o JMeter não sobrescreve o relatório).
+        -->
+        <profile>
+            <id>carga</id>
+            <properties>
+                <carga.host>localhost</carga.host>
+                <carga.porta>8080</carga.porta>
+                <carga.usuarios>50</carga.usuarios>
+                <carga.rampa>30</carga.rampa>
+                <carga.duracao>120</carga.duracao>
+                <carga.salas>20</carga.salas>
+                <carga.disputa>10</carga.disputa>
+                <carga.adminEmail/>
+                <carga.adminSenha/>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.lazerycode.jmeter</groupId>
+                        <artifactId>jmeter-maven-plugin</artifactId>
+                        <version>3.8.0</version>
+                        <executions>
+                            <!-- O plugin guarda a configuração preparada sob este id e os outros goals a leem. -->
+                            <execution>
+                                <id>configuration</id>
+                                <goals>
+                                    <goal>configure</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <jmeterVersion>5.6.3</jmeterVersion>
+                            <testFilesDirectory>${project.basedir}/jmeter</testFilesDirectory>
+                            <testFilesIncluded>
+                                <jMeterTestFile>carga-reservas.jmx</jMeterTestFile>
+                            </testFilesIncluded>
+                            <generateReports>true</generateReports>
+                            <testResultsTimestamp>false</testResultsTimestamp>
+                            <!-- Qualquer requisição com falha (5xx, ou código inesperado) reprova. -->
+                            <scanResultsForFailedRequests>true</scanResultsForFailedRequests>
+                            <errorRateThresholdInPercent>0</errorRateThresholdInPercent>
+                            <propertiesUser>
+                                <host>${carga.host}</host>
+                                <porta>${carga.porta}</porta>
+                                <usuarios>${carga.usuarios}</usuarios>
+                                <rampa>${carga.rampa}</rampa>
+                                <duracao>${carga.duracao}</duracao>
+                                <salas>${carga.salas}</salas>
+                                <disputa>${carga.disputa}</disputa>
+                                <adminEmail>${carga.adminEmail}</adminEmail>
+                                <adminSenha>${carga.adminSenha}</adminSenha>
+                            </propertiesUser>
+                            <jMeterProcessJVMSettings>
+                                <xms>256</xms>
+                                <xmx>768</xmx>
+                            </jMeterProcessJVMSettings>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
