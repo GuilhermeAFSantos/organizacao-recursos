@@ -63,7 +63,7 @@ class ReservaConcorrenciaIT {
     @Autowired
     JdbcTemplate jdbc;
 
-    @RepeatedTest(value = 3, name = "rodada {currentRepetition} de {totalRepetitions}")
+    @RepeatedTest(value = 10, name = "rodada {currentRepetition} de {totalRepetitions}")
     @DisplayName("N requisições simultâneas → exatamente 1 aceita (201) e N−1 recusadas (409 Conflito de horário)")
     void exatamenteUmaReservaAceita() throws Exception {
         var cenario = new CenarioBanco(jdbc);
