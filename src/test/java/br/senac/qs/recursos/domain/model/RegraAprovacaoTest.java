@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
@@ -12,6 +14,7 @@ import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -160,6 +163,28 @@ class RegraAprovacaoTest {
                 .hasMessage("Informe o motivo da rejeição.");
 
         assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
+    }
+
+    @ParameterizedTest(name = "agora {0} (Brasília {1}) → aprovada = {2}")
+    @CsvSource({
+        "2026-12-01T10:59:59Z, 07:59:59, true",
+        "2026-12-01T11:00:00Z, 08:00:00, false",
+        "2026-12-01T12:00:00Z, 09:00:00, false"
+    })
+    @DisplayName("AP-08: aprovação só antes do horário de início (relógio fixo, fronteira de 1 segundo)")
+    void aprovacaoSoAntesDoHorarioDeInicio(String agora, String horaLocal, boolean aprovada) {
+        var relogio = Clock.fixed(Instant.parse(agora), ZoneOffset.UTC);
+        var reserva = laboratorioSolicitado();
+
+        if (aprovada) {
+            reserva.aprovar(rita, relogio.instant());
+            assertThat(reserva.getStatus()).isEqualTo(StatusReserva.APROVADA);
+        } else {
+            assertThatThrownBy(() -> reserva.aprovar(rita, relogio.instant()))
+                    .isInstanceOf(RegraNegocioException.class)
+                    .hasMessage("A reserva só pode ser aprovada antes do horário de início.");
+            assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
+        }
     }
 
     static void decidir(Reserva reserva, String acao, Usuario autor) {
