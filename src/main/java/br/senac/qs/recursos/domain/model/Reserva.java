@@ -230,6 +230,10 @@ public class Reserva {
 
     public void registrarNaoComparecimento(Usuario responsavel, String motivo, Instant agora) {
         exigirTransicaoPara(NAO_COMPARECEU);
+        if (!jaComecou(agora)) {
+            throw new RegraNegocioException(
+                    "O não comparecimento só pode ser registrado a partir do horário de início.");
+        }
         mudarPara(NAO_COMPARECEU, responsavel, motivo, agora);
     }
 
