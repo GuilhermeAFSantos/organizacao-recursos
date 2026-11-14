@@ -55,7 +55,6 @@ public class Bloqueio {
 
     public static Bloqueio registrar(Usuario administrador, Recurso recurso, TipoBloqueio tipo,
                                      PeriodoReserva periodo, String motivo, Instant agora) {
-        exigirAdministrador(administrador);
         if (motivo == null || motivo.isBlank()) {
             throw new RegraNegocioException("Informe o motivo do bloqueio.");
         }
@@ -74,38 +73,11 @@ public class Bloqueio {
      * minuto cheio (Q3); antes de começar, o bloqueio inteiro é desfeito.
      */
     public void encerrar(Usuario administrador, Instant agora) {
-        exigirAdministrador(administrador);
-        if (!isAtivo()) {
-            throw new RegraNegocioException("Este bloqueio já foi encerrado.");
-        }
-        if (!agora.isBefore(periodo.fim())) {
-            throw new RegraNegocioException("Este bloqueio já terminou.");
-        }
-        var novoFim = proximoMinutoCheio(agora);
-        if (novoFim.isAfter(periodo.inicio())) {
-            periodo = new PeriodoReserva(periodo.inicio(), novoFim);
-            for (Ocupacao ocupacao : ocupacoes) {
-                ocupacao.encurtarAte(novoFim);
-            }
-        } else {
-            ocupacoes.forEach(Ocupacao::liberar);
-        }
+        // Prática de TDD estrito: regra removida, a ser refeita no cenário MN-11.
     }
 
     public boolean isAtivo() {
         return ocupacoes.stream().anyMatch(Ocupacao::isBloqueante);
-    }
-
-    /** 10:37:42 → 10:38:00; 10:37:00 → 10:37:00. Mantém os períodos em minutos cheios (Q3). */
-    private static Instant proximoMinutoCheio(Instant instante) {
-        var truncado = instante.truncatedTo(ChronoUnit.MINUTES);
-        return truncado.equals(instante) ? truncado : truncado.plus(1, ChronoUnit.MINUTES);
-    }
-
-    private static void exigirAdministrador(Usuario usuario) {
-        if (usuario.getPerfil() != Perfil.ADMINISTRADOR) {
-            throw new OperacaoNaoPermitidaException("Somente um ADMINISTRADOR pode registrar ou encerrar bloqueios.");
-        }
     }
 
     public Long getId() {

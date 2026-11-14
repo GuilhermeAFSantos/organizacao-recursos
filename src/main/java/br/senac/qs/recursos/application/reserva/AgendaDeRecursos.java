@@ -82,20 +82,8 @@ public class AgendaDeRecursos {
     }
 
     private static String mensagemDeConflito(Recurso recurso, List<Ocupacao> conflitos) {
-        return conflitos.stream().map(Ocupacao::getBloqueio).filter(Objects::nonNull).findFirst()
-                .map(bloqueio -> bloqueado(recurso, bloqueio))
-                .orElseGet(() -> ocupado(recurso));
-    }
-
-    private static String bloqueado(Recurso recurso, Bloqueio bloqueio) {
-        var tipo = recurso.getTipo();
-        var p = bloqueio.getPeriodo();
-        var situacao = bloqueio.getTipo() == TipoBloqueio.MANUTENCAO ? "está em manutenção"
-                : "está " + tipo.concordar("bloqueado");
-        return recurso.identificacao() + " " + situacao + " das "
-                + HORA.format(p.inicio().atZone(BRASILIA)) + " às " + HORA.format(p.fim().atZone(BRASILIA))
-                + " de " + DATA.format(p.inicio().atZone(BRASILIA)) + ". Escolha outro horário ou " + tipo.outro()
-                + ".";
+        // Prática de TDD estrito: mensagem de manutenção/bloqueio removida (MN-02, MN-10).
+        return ocupado(recurso);
     }
 
     private static String ocupado(Recurso recurso) {
