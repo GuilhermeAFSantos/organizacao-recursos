@@ -9,6 +9,7 @@ import java.util.Objects;
 import br.senac.qs.recursos.application.ViolacaoDeExclusao;
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
+import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 import br.senac.qs.recursos.domain.model.Ocupacao;
 import br.senac.qs.recursos.domain.model.PeriodoReserva;
 import br.senac.qs.recursos.domain.model.RegistroAuditoria;
@@ -88,10 +89,15 @@ public class CriarReservaSala {
                 .orElseThrow(() -> new AccessDeniedException("usuário do token inexistente ou inativo"));
     }
 
+    /** Trava a sala; se ela existe mas foi desativada, a recusa diz isso em vez de "não encontrada". */
     private Sala salaAtivaTravada(Long salaId) {
-        var naoEncontrada = new RecursoNaoEncontradoException("Sala " + salaId + " não encontrada.");
-        recursos.travar(salaId).orElseThrow(() -> naoEncontrada);
-        return salas.findById(salaId).orElseThrow(() -> naoEncontrada);
+        var travada = recursos.travar(salaId).isPresent();
+        var sala = salas.findById(salaId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Sala " + salaId + " não encontrada."));
+        if (!travada) {
+            throw new RegraNegocioException("A sala " + sala.getNome() + " está desativada e não aceita reservas.");
+        }
+        return sala;
     }
 
     /**
