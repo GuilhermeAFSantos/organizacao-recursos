@@ -21,8 +21,12 @@ public enum StatusReserva {
 
     /** Para quais estados é permitido ir a partir deste. Fonte única da tabela de transições. */
     public Set<StatusReserva> destinos() {
-        // Prática de TDD estrito: tabela removida (tudo permitido), a ser refeita no cenário ES-02.
-        return Set.of(values());
+        return switch (this) {
+            case SOLICITADA -> Set.of(APROVADA, REJEITADA, CANCELADA);
+            case APROVADA -> Set.of(EM_USO, CANCELADA, NAO_COMPARECEU);
+            case EM_USO -> Set.of(CONCLUIDA);
+            case CONCLUIDA, REJEITADA, CANCELADA, NAO_COMPARECEU -> Set.of();
+        };
     }
 
     public boolean podeIrPara(StatusReserva destino) {

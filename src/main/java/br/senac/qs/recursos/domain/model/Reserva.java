@@ -178,6 +178,7 @@ public class Reserva {
     public void aprovar(Usuario responsavel, Instant agora) {
         exigirResponsavel(responsavel, "aprovar");
         proibirDecisaoSobreAPropria(responsavel);
+        exigirTransicaoPara(APROVADA);
         if (jaComecou(agora)) {
             throw new RegraNegocioException("A reserva só pode ser aprovada antes do horário de início.");
         }
@@ -187,6 +188,7 @@ public class Reserva {
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
         exigirResponsavel(responsavel, "rejeitar");
+        exigirTransicaoPara(REJEITADA);
         if (motivo == null || motivo.isBlank()) {
             throw new RegraNegocioException("Informe o motivo da rejeição.");
         }
@@ -194,18 +196,22 @@ public class Reserva {
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
+        exigirTransicaoPara(CANCELADA);
         mudarPara(CANCELADA, autor, motivo, agora);
     }
 
     public void iniciarUso(Usuario responsavel, Instant agora) {
+        exigirTransicaoPara(EM_USO);
         mudarPara(EM_USO, responsavel, null, agora);
     }
 
     public void registrarNaoComparecimento(Usuario responsavel, String motivo, Instant agora) {
+        exigirTransicaoPara(NAO_COMPARECEU);
         mudarPara(NAO_COMPARECEU, responsavel, motivo, agora);
     }
 
     public void concluir(Usuario responsavel, Instant agora) {
+        exigirTransicaoPara(CONCLUIDA);
         mudarPara(CONCLUIDA, responsavel, null, agora);
     }
 
@@ -226,6 +232,14 @@ public class Reserva {
         if (responsavel.mesmaPessoaQue(solicitante)) {
             throw new OperacaoNaoPermitidaException(
                     "Você não pode aprovar ou rejeitar uma reserva solicitada por você.");
+        }
+    }
+
+    /** RC05: só as transições da tabela de StatusReserva são permitidas. */
+    private void exigirTransicaoPara(StatusReserva destino) {
+        if (!status.podeIrPara(destino)) {
+            throw new TransicaoInvalidaException("Não é possível mudar a reserva de " + status + " para "
+                    + destino + ". " + status.descreverOpcoes());
         }
     }
 
