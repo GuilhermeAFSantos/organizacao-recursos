@@ -48,8 +48,8 @@ class CriarReservaSalaTest {
 
     RegistroAuditoriaRepository auditoria = mock(RegistroAuditoriaRepository.class);
 
-    CriarReservaSala casoDeUso = new CriarReservaSala(new UsuarioDoToken(usuarios), recursos, salas, ocupacoes, reservas, auditoria,
-            Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC));
+    CriarReservaSala casoDeUso = new CriarReservaSala(new UsuarioDoToken(usuarios), recursos, salas, ocupacoes,
+            reservas, auditoria, Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC));
 
     CriarReservaSalaComando comando = new CriarReservaSalaComando("ana@senac.br", 7L, INICIO, FIM, "Aula");
 
