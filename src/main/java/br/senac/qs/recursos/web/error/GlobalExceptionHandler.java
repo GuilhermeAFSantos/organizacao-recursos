@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.UUID;
 
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
+import br.senac.qs.recursos.domain.exception.CredenciaisInvalidasException;
+import br.senac.qs.recursos.domain.exception.MuitasTentativasException;
 import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
 import br.senac.qs.recursos.domain.exception.RegraNegocioException;
@@ -85,6 +87,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     ResponseEntity<ProblemDetail> naoEncontrado(RecursoNaoEncontradoException ex, HttpServletRequest req) {
         return responder(TipoProblema.NAO_ENCONTRADO.criar(ex.getMessage(), req.getRequestURI(), clock));
+    }
+
+    @ExceptionHandler(CredenciaisInvalidasException.class)
+    ResponseEntity<ProblemDetail> credenciaisInvalidas(CredenciaisInvalidasException ex, HttpServletRequest req) {
+        return responder(TipoProblema.NAO_AUTENTICADO.criar(ex.getMessage(), req.getRequestURI(), clock));
+    }
+
+    @ExceptionHandler(MuitasTentativasException.class)
+    ResponseEntity<ProblemDetail> muitasTentativas(MuitasTentativasException ex, HttpServletRequest req) {
+        return responder(TipoProblema.MUITAS_TENTATIVAS.criar(ex.getMessage(), req.getRequestURI(), clock));
     }
 
     /** Perfil até pode agir, mas não sobre ESTA reserva (ex.: cancelar a reserva de outra pessoa). */
