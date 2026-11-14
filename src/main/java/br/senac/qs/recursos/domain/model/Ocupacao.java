@@ -40,4 +40,17 @@ public class Ocupacao {
         this.periodo = periodo;
         this.bloqueante = true;
     }
+
+    public Recurso getRecurso() {
+        return recurso;
+    }
+
+    public boolean isBloqueante() {
+        return bloqueante;
+    }
+
+    /** O horário deixa de estar ocupado (reserva rejeitada, cancelada ou com não comparecimento). */
+    void liberar() {
+        this.bloqueante = false;
+    }
 }

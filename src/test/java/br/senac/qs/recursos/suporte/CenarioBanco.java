@@ -28,8 +28,12 @@ public class CenarioBanco {
     }
 
     public long criarSala() {
-        long id = jdbc.queryForObject("INSERT INTO recurso (tipo, nome) VALUES ('SALA', ?) RETURNING id",
-                Long.class, "Sala " + UUID.randomUUID().toString().substring(0, 8));
+        return criarSala(false);
+    }
+
+    public long criarSala(boolean restrita) {
+        long id = jdbc.queryForObject("INSERT INTO recurso (tipo, nome, restrito) VALUES ('SALA', ?, ?) RETURNING id",
+                Long.class, "Sala " + UUID.randomUUID().toString().substring(0, 8), restrita);
         jdbc.update("INSERT INTO sala (id, capacidade, bloco, andar, tipo_sala) VALUES (?, 40, 'A', 1, 'AULA')", id);
         return id;
     }
@@ -38,6 +42,14 @@ public class CenarioBanco {
         return jdbc.queryForObject("""
                 SELECT count(DISTINCT reserva_id) FROM ocupacao WHERE recurso_id = ? AND reserva_id IS NOT NULL""",
                 Integer.class, salaId);
+    }
+
+    /** Auditoria da reserva em ordem cronológica, no formato "ANTERIOR→NOVO por autor". */
+    public java.util.List<String> auditoriaDaReserva(long reservaId) {
+        return jdbc.queryForList("""
+                SELECT coalesce(estado_anterior, '—') || '→' || estado_novo || ' por ' || usuario_email
+                FROM registro_auditoria WHERE entidade = 'RESERVA' AND entidade_id = ? ORDER BY id""",
+                String.class, reservaId);
     }
 
     public int contarOcupacoesBloqueantes(long salaId) {

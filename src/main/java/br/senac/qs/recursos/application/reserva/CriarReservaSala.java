@@ -7,10 +7,12 @@ import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
 import br.senac.qs.recursos.domain.model.PeriodoReserva;
 import br.senac.qs.recursos.domain.model.Recurso;
+import br.senac.qs.recursos.domain.model.RegistroAuditoria;
 import br.senac.qs.recursos.domain.model.Reserva;
 import br.senac.qs.recursos.domain.model.Sala;
 import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
+import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import br.senac.qs.recursos.domain.repository.SalaRepository;
 import br.senac.qs.recursos.domain.repository.UsuarioRepository;
@@ -43,27 +45,30 @@ public class CriarReservaSala {
     private final SalaRepository salas;
     private final OcupacaoRepository ocupacoes;
     private final ReservaRepository reservas;
+    private final RegistroAuditoriaRepository auditoria;
     private final Clock clock;
 
     public CriarReservaSala(UsuarioRepository usuarios, SalaRepository salas, OcupacaoRepository ocupacoes,
-                            ReservaRepository reservas, Clock clock) {
+                            ReservaRepository reservas, RegistroAuditoriaRepository auditoria, Clock clock) {
         this.usuarios = usuarios;
         this.salas = salas;
         this.ocupacoes = ocupacoes;
         this.reservas = reservas;
+        this.auditoria = auditoria;
         this.clock = clock;
     }
 
     @Transactional
-    public ReservaCriada executar(CriarReservaSalaComando comando) {
+    public ReservaResumo executar(CriarReservaSalaComando comando) {
         var periodo = new PeriodoReserva(comando.inicio(), comando.fim());
         var solicitante = solicitanteAtivo(comando.emailSolicitante());
         var sala = salaAtivaTravada(comando.salaId());
         garantirHorarioLivre(sala, periodo);
 
         var reserva = gravar(Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(), clock.instant()), sala);
-        return new ReservaCriada(reserva.getId(), sala.getId(), periodo.inicio(), periodo.fim(),
-                reserva.getFinalidade(), reserva.getStatus());
+        // RC08: na mesma transação da reserva. Se a auditoria falhar, a reserva também é desfeita.
+        reserva.retirarMudancas().forEach(m -> auditoria.save(RegistroAuditoria.daReserva(reserva.getId(), m)));
+        return ReservaResumo.de(reserva);
     }
 
     /** O token é válido, mas o usuário pode ter sido desativado depois da emissão. */

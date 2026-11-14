@@ -17,6 +17,7 @@ import br.senac.qs.recursos.domain.model.Reserva;
 import br.senac.qs.recursos.domain.model.Sala;
 import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
+import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import br.senac.qs.recursos.domain.repository.SalaRepository;
 import br.senac.qs.recursos.domain.repository.UsuarioRepository;
@@ -41,7 +42,9 @@ class CriarReservaSalaTest {
     OcupacaoRepository ocupacoes = mock(OcupacaoRepository.class);
     ReservaRepository reservas = mock(ReservaRepository.class);
 
-    CriarReservaSala casoDeUso = new CriarReservaSala(usuarios, salas, ocupacoes, reservas,
+    RegistroAuditoriaRepository auditoria = mock(RegistroAuditoriaRepository.class);
+
+    CriarReservaSala casoDeUso = new CriarReservaSala(usuarios, salas, ocupacoes, reservas, auditoria,
             Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC));
 
     CriarReservaSalaComando comando = new CriarReservaSalaComando("ana@senac.br", 7L, INICIO, FIM, "Aula");

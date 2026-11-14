@@ -21,9 +21,18 @@ public abstract class Recurso {
 
     private String nome;
 
+    /** RF07/RC06: reservas deste recurso exigem aprovação de um RESPONSAVEL. */
+    private boolean restrito;
+
     private boolean ativo;
 
     protected Recurso() {
+    }
+
+    protected Recurso(String nome, boolean restrito) {
+        this.nome = nome;
+        this.restrito = restrito;
+        this.ativo = true;
     }
 
     public Long getId() {
@@ -32,6 +41,10 @@ public abstract class Recurso {
 
     public String getNome() {
         return nome;
+    }
+
+    public boolean isRestrito() {
+        return restrito;
     }
 
     public boolean isAtivo() {
