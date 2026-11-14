@@ -29,6 +29,7 @@ class RegraAprovacaoTest {
     final Sala sala101 = new Sala("Sala 101", false);
     final Sala laboratorio = new Sala("Laboratório 3", true);
     final Usuario rita = new Usuario("rita@senac.br", Perfil.RESPONSAVEL);
+    final Usuario bruno = new Usuario("bruno@senac.br", Perfil.SOLICITANTE);
     final Usuario adm = new Usuario("adm@senac.br", Perfil.ADMINISTRADOR);
     final Professor carlos = Professor.cadastrar(adm, "Prof. Carlos", "P-1", null, java.util.Set.of());
 
@@ -97,6 +98,19 @@ class RegraAprovacaoTest {
         assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
         assertThat(reserva.getAprovador()).isNull();
         assertThat(reserva.retirarMudancas()).isEmpty();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"SOLICITANTE", "ADMINISTRADOR"})
+    @DisplayName("AP-05: só o perfil RESPONSAVEL aprova; outro perfil é recusado e a reserva continua SOLICITADA")
+    void somenteOPerfilResponsavelAprova(Perfil perfil) {
+        var reserva = solicitar(laboratorio);
+        var outro = perfil == Perfil.SOLICITANTE ? bruno : adm;
+
+        assertThatThrownBy(() -> reserva.aprovar(outro, AGORA)).isInstanceOf(OperacaoNaoPermitidaException.class)
+                .hasMessage("Somente um RESPONSAVEL pode aprovar reservas.");
+
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
     }
 
     static void decidir(Reserva reserva, String acao, Usuario autor) {
