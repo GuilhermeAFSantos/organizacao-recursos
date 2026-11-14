@@ -29,12 +29,12 @@ ArchUnit · JaCoCo · SonarCloud · GitHub Actions.
 
 | Métrica | Meta | Atual |
 |---|---|---|
-| Cobertura de linhas (JaCoCo) | ≥ 80% | **98,0%** |
-| Cobertura de branches (JaCoCo) | ≥ 70% | **95,0%** |
+| Cobertura de linhas (JaCoCo) | ≥ 80% | **98,2%** |
+| Cobertura de branches (JaCoCo) | ≥ 70% | **93,3%** |
 | Bugs / vulnerabilidades (SonarCloud) | 0 | **0 / 0** |
 | Requisitos críticos (RC) na RTM | 100% | **100%** (8 de 8 rastreados) |
 
-Funcionalidades prontas: autenticação JWT (validação de token e perfis); criação de reserva de sala
+Funcionalidades prontas: login com JWT, bloqueio após 5 senhas erradas e gestão de usuários (RF01); criação de reserva de sala
 com as regras RC01, RC02 e RC03; aprovação automática de recurso não restrito; aprovação, rejeição,
 cancelamento, início de uso, não comparecimento e conclusão com a máquina de estados (RC05, RC06,
 RC07) e auditoria de cada mudança (RC08); manutenção e bloqueios com encerramento antecipado (RF08,
@@ -64,8 +64,16 @@ docker compose up -d
 | http://localhost:8080/swagger-ui.html | Documentação interativa da API (RF14) |
 | http://localhost:8080/actuator/health | Health check |
 
-As rotas `/api/**` exigem um JWT no cabeçalho `Authorization: Bearer …`. O endpoint de login ainda
-não existe (RF01 parcial, ver RTM); até lá, os testes geram tokens assinados com a chave da aplicação.
+**Primeiro acesso:** ao subir, a aplicação cria o ADMINISTRADOR definido em `ADMIN_EMAIL` e
+`ADMIN_SENHA` no `.env` (se ainda não houver nenhum). Para obter um token:
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" \
+     -d '{"email": "admin@senac.br", "senha": "<ADMIN_SENHA>"}'
+```
+
+Use o `token` devolvido no cabeçalho `Authorization: Bearer …` (ou no botão "Authorize" do Swagger).
+O administrador cadastra os demais usuários em `POST /api/usuarios`.
 
 > **Se a aplicação não subir:** confira se o `.env` tem `DB_PASSWORD` e `JWT_SECRET` (com pelo menos
 > 32 bytes). Se você mudou a senha depois de subir o banco, recrie o volume com
@@ -91,11 +99,12 @@ não existe (RF01 parcial, ver RTM); até lá, os testes geram tokens assinados 
 
 | Tipo | Classes | O que provam |
 |---|---|---|
-| Unidade | `PeriodoReservaTest`, `StatusReservaTest`, `ReservaTest`, `BloqueioTest`, `MinutoCheioValidatorTest`, `CriarReservaSalaTest`, `JwtPropertiesTest`, `TipoProblemaTest` | Regras puras (RC01, RC02, matriz de 49 transições, perfis, horários, auditoria), tradução de erros do banco, configuração |
+| Unidade | `PeriodoReservaTest`, `StatusReservaTest`, `ReservaTest`, `BloqueioTest`, `UsuarioTest`, `MinutoCheioValidatorTest`, `SenhaForteValidatorTest`, `GarantirPrimeiroAdministradorTest`, `CriarReservaSalaTest`, `JwtPropertiesTest`, `TipoProblemaTest` | Regras puras (RC01, RC02, matriz de 49 transições, perfis, horários, auditoria), tradução de erros do banco, configuração |
 | Web (MockMvc) | `GlobalExceptionHandlerTest` | Contrato de erros ProblemDetail, sem vazar detalhes internos |
 | Arquitetura | `ArquiteturaTest` (ArchUnit) | Dependências entre camadas |
 | Integração (banco) | `EsquemaBancoIT` | Constraints e triggers do schema no PostgreSQL real |
-| API (caixa-preta) | `CriarReservaSalaIT`, `TransicoesReservaIT`, `BloqueiosIT`, `AplicacaoIT` | HTTP + JWT + banco reais, ponta a ponta, incluindo aprovar × cancelar e reserva × manutenção simultâneos |
+| API (caixa-preta) | `LoginIT`, `UsuariosIT`, `CriarReservaSalaIT`, `TransicoesReservaIT`, `BloqueiosIT`, `AplicacaoIT` | HTTP + JWT + banco reais, ponta a ponta, incluindo aprovar × cancelar e reserva × manutenção simultâneos |
+| Ponta a ponta | `FluxoCompletoIT` | Do primeiro login do administrador à reserva concluída, ao bloqueio e à trilha de auditoria |
 | Concorrência | `ReservaConcorrenciaIT` | RC03: 20 requisições simultâneas × 10 rodadas → exatamente 1 reserva |
 
 ## Estrutura
