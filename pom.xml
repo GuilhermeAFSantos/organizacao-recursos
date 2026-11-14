@@ -34,12 +34,12 @@
         <argLine/>
 
         <!--
-            SonarCloud: substitua CONFIGURAR-ORGANIZACAO pela organização criada em https://sonarcloud.io
-            (normalmente o usuário/organização do GitHub). O token NÃO fica aqui: ele vem do secret
+            SonarCloud: organização e chave geradas ao importar o repositório GuilhermeAFSantos/organizacao-recursos
+            em https://sonarcloud.io (confira em Project > Information). O token NÃO fica aqui: ele vem do secret
             SONAR_TOKEN do GitHub Actions (ver .github/workflows/ci.yml).
         -->
-        <sonar.organization>CONFIGURAR-ORGANIZACAO</sonar.organization>
-        <sonar.projectKey>CONFIGURAR-ORGANIZACAO_organizacao-recursos</sonar.projectKey>
+        <sonar.organization>guilhermeafsantos</sonar.organization>
+        <sonar.projectKey>GuilhermeAFSantos_organizacao-recursos</sonar.projectKey>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.coverage.exclusions>**/RecursosApplication.java</sonar.coverage.exclusions>

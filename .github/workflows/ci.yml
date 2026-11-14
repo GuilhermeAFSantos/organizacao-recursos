@@ -7,8 +7,8 @@
 #   3. Gere um token em My Account > Security.
 #   4. No GitHub: Settings > Secrets and variables > Actions > New repository secret
 #        Nome: SONAR_TOKEN   Valor: o token gerado no passo 3
-#   5. No pom.xml, troque CONFIGURAR-ORGANIZACAO por sua organização no SonarCloud
-#      (propriedades sonar.organization e sonar.projectKey).
+#   5. Confira se sonar.organization e sonar.projectKey no pom.xml batem com Project > Information
+#      no SonarCloud (valores atuais: guilhermeafsantos / GuilhermeAFSantos_organizacao-recursos).
 name: CI
 
 on:
