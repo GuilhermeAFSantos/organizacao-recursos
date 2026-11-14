@@ -173,6 +173,9 @@ public class Reserva {
     public void aprovar(Usuario responsavel, Instant agora) {
         exigirResponsavel(responsavel, "aprovar");
         proibirDecisaoSobreAPropria(responsavel);
+        if (!agora.isBefore(periodo.inicio())) {
+            throw new RegraNegocioException("A reserva só pode ser aprovada antes do horário de início.");
+        }
         this.aprovador = responsavel;
         mudarPara(APROVADA, responsavel, null, agora);
     }
