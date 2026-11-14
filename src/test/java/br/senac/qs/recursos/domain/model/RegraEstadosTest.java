@@ -89,21 +89,24 @@ class RegraEstadosTest {
             case SOLICITADA -> { }
             case REJEITADA -> reserva.rejeitar(rita, "sem vaga", ANTES);
             case CANCELADA -> reserva.cancelar(ana, null, ANTES);
-            default -> {
+            case APROVADA -> reserva.aprovar(rita, ANTES);
+            case EM_USO -> emUso(reserva);
+            case CONCLUIDA -> {
+                emUso(reserva);
+                reserva.concluir(rita, FIM);
+            }
+            case NAO_COMPARECEU -> {
                 reserva.aprovar(rita, ANTES);
-                switch (estado) {
-                    case EM_USO -> reserva.iniciarUso(rita, INICIO);
-                    case CONCLUIDA -> {
-                        reserva.iniciarUso(rita, INICIO);
-                        reserva.concluir(rita, FIM);
-                    }
-                    case NAO_COMPARECEU -> reserva.registrarNaoComparecimento(rita, null, INICIO);
-                    default -> { }
-                }
+                reserva.registrarNaoComparecimento(rita, null, INICIO);
             }
         }
         reserva.retirarMudancas();
         return reserva;
+    }
+
+    void emUso(Reserva reserva) {
+        reserva.aprovar(rita, ANTES);
+        reserva.iniciarUso(rita, INICIO);
     }
 
     static void executar(Reserva reserva, String acao, Usuario autor, String motivo, Instant agora) {
