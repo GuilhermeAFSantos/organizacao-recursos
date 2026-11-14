@@ -62,6 +62,16 @@ public class Ocupacao {
         return periodo;
     }
 
+    /** Reserva que gerou esta ocupação; nula quando a origem é um bloqueio. */
+    public Reserva getReserva() {
+        return reserva;
+    }
+
+    /** Bloqueio que gerou esta ocupação; nulo quando a origem é uma reserva. */
+    public Bloqueio getBloqueio() {
+        return bloqueio;
+    }
+
     /** Encurta o período, mantendo o início (bloqueio encerrado antes do previsto). */
     void encurtarAte(Instant novoFim) {
         this.periodo = new PeriodoReserva(periodo.inicio(), novoFim);

@@ -54,6 +54,22 @@ public class RegistroAuditoria {
     protected RegistroAuditoria() {
     }
 
+    /** Registro (acao CRIACAO, novo ATIVO) ou encerramento (acao ENCERRAMENTO, ATIVO → ENCERRADO) de bloqueio. */
+    public static RegistroAuditoria doBloqueio(Long bloqueioId, String acao, String anterior, String novo,
+                                               Usuario autor, String motivo, Instant quando) {
+        var registro = new RegistroAuditoria();
+        registro.entidade = "BLOQUEIO";
+        registro.entidadeId = bloqueioId;
+        registro.acao = acao;
+        registro.estadoAnterior = anterior;
+        registro.estadoNovo = novo;
+        registro.motivo = motivo;
+        registro.usuarioId = autor.getId();
+        registro.usuarioEmail = autor.getEmail();
+        registro.ocorridoEm = quando;
+        return registro;
+    }
+
     public static RegistroAuditoria daReserva(Long reservaId, MudancaDeEstado mudanca) {
         var registro = new RegistroAuditoria();
         registro.entidade = ENTIDADE_RESERVA;
