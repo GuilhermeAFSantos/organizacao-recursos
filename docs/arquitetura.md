@@ -258,6 +258,22 @@ exigir.
 JVM em tempo de execução, intermitente no Windows). O Mockito agora é carregado como `-javaagent`
 nos testes, como ele próprio recomenda para Java 21+.
 
+### Decisões da fatia de retirada e devolução de materiais (Fase 2)
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Quem registra | Um RESPONSAVEL ou ADMINISTRADOR, no balcão. Quem **responde** pelo item é o solicitante da reserva (aparece nas pendências). | O SOLICITANTE não pode atestar a própria devolução; o risco do RF09 é "equipamento sem responsável". |
+| Quando retira | Só material que faz parte da reserva, com a reserva APROVADA ou EM_USO. Sem regra de horário (como o início de uso, ver Q4). | Reserva aguardando aprovação, rejeitada ou cancelada não dá direito ao item. |
+| Item indisponível | Recusado se a última movimentação do item, em qualquer reserva, for uma retirada ("já foi retirado" ou "ainda não foi devolvido de outra reserva"), ou se estiver DANIFICADO. | Um item físico só pode estar com uma pessoa. O material pode ter sido danificado depois de a reserva ser feita. |
+| Estado na saída | Registrado automaticamente (o estado atual do material). | A conferência que importa é a da volta; na saída, o item já passou pelo filtro de não estar danificado. |
+| Devolução | Estado de conservação obrigatório; **DANIFICADO exige observação** descrevendo o dano. O material passa a ter o estado devolvido; danificado deixa de ser oferecido na pesquisa e de aceitar reservas até o cadastro registrar o conserto. | É o "dano não registrado" do RF09. |
+| Prazo | Devolução depois do fim da reserva é marcada como atrasada (1 minuto depois já conta); a lista de pendências mostra as atrasadas. Devolver é sempre permitido, mesmo com a reserva concluída. | Recusar a devolução atrasada deixaria o item sem registro. |
+| Conclusão sem devolução | A reserva pode ser concluída com item pendente; a pendência continua visível até a devolução. | Bloquear a conclusão acoplaria a máquina de estados à movimentação sem resolver o problema real (o item continua fora). |
+| Reservas futuras de um item danificado | Não são canceladas automaticamente. | Cancelar reservas de outras pessoas como efeito colateral é grave; o ADMINISTRADOR decide (ponto para o relatório do RF12). |
+| Histórico | `movimentacao_material` é somente inserção, também no banco (**V5**: UPDATE, DELETE e TRUNCATE recusados). As movimentações não vão para `registro_auditoria`: a própria tabela já registra quem, quando e o estado. | Um dano registrado não pode ser apagado depois. |
+| Concorrência | O item é travado (`RecursoRepository.travar`) antes de ler a última movimentação. Testado: 5 retiradas simultâneas → 1 aceita. | Não há constraint simples que impeça "duas retiradas sem devolução"; o lock serializa. |
+| Ordem das movimentações | Pela sequência do id (a de maior id é a mais recente). | Duas movimentações no mesmo instante teriam ordem ambígua pela data. |
+
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
 mudança para a auditoria). A verificação de permissão vem primeiro para não revelar o estado da

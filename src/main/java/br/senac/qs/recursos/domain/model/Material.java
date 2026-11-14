@@ -59,6 +59,11 @@ public class Material extends Recurso {
         return TipoRecurso.MATERIAL;
     }
 
+    /** Estado conferido na devolução (RF09). */
+    void registrarConservacao(EstadoConservacao estado) {
+        this.estadoConservacao = estado;
+    }
+
     /** O patrimônio identifica o item: dois projetores podem ter o mesmo nome. */
     @Override
     public String getNomeParaExibicao() {
