@@ -215,6 +215,20 @@ class AlteracaoHorarioIT {
         }
 
         @Test
+        @DisplayName("AU-03: cliente não define o estado ao alterar o horário (mass assignment) → 400")
+        void estadoNaoPodeSerEnviado() {
+            long reserva = reservar(ana, cenario.criarSala(true), null, "10:00", "12:00");
+            Map<String, Object> corpo = Map.of("inicio", texto("14:00"), "fim", texto("16:00"), "status", "APROVADA");
+
+            var resposta = http.exchange("/api/reservas/" + reserva + "/horario", HttpMethod.PUT,
+                    new HttpEntity<>(corpo, cabecalhos(ana)), JsonNode.class);
+
+            assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(periodoGravado(reserva)).containsExactly(horario("10:00"), horario("12:00"));
+            assertThat(acoesAuditadas(reserva)).as("continua só com a criação").hasSize(1);
+        }
+
+        @Test
         @DisplayName("entrada inválida: 404 inexistente, 422 fim antes do início, 400 minuto quebrado ou sem corpo")
         void entradaInvalida() {
             long reserva = reservar(ana, sala, null, "10:00", "12:00");

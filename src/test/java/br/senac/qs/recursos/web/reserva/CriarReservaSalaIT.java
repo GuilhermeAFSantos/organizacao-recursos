@@ -208,11 +208,12 @@ class CriarReservaSalaIT {
             assertThat(cenario.contarReservas(sala)).isZero();
         }
 
-        @Test
-        @DisplayName("cliente não pode definir o status na criação (mass assignment) → 400")
-        void statusNaoPodeSerEnviado() {
-            var corpo = new java.util.HashMap<>(corpo(sala, "08:00:00", "10:00:00"));
-            corpo.put("status", "APROVADA");
+        @ParameterizedTest(name = "campo extra {0}")
+        @CsvSource({"status, APROVADA", "aprovadorId, 3"})
+        @DisplayName("AU-03: cliente não define estado nem aprovador na criação (mass assignment) → 400")
+        void statusNaoPodeSerEnviado(String campo, String valor) {
+            var corpo = new java.util.HashMap<String, Object>(corpo(sala, "08:00:00", "10:00:00"));
+            corpo.put(campo, valor);
 
             assertThat(reservar(tokenSolicitante, corpo).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(cenario.contarReservas(sala)).isZero();

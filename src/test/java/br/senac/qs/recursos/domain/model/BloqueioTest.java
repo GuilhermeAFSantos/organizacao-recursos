@@ -41,7 +41,7 @@ class BloqueioTest {
 
         @ParameterizedTest(name = "tipo {0}")
         @EnumSource(TipoBloqueio.class)
-        @DisplayName("Q9: ADMINISTRADOR registra MANUTENCAO ou ADMINISTRATIVO, ocupando o período do recurso")
+        @DisplayName("MN-10/Q9: ADMINISTRADOR registra MANUTENCAO ou ADMINISTRATIVO, ocupando o período do recurso")
         void administradorRegistra(TipoBloqueio tipo) {
             var bloqueio = Bloqueio.registrar(adm, sala, tipo, new PeriodoReserva(INICIO, FIM), "Motivo", ANTES);
 
@@ -79,7 +79,7 @@ class BloqueioTest {
     }
 
     @Nested
-    @DisplayName("Q10: encerramento antes do fim previsto")
+    @DisplayName("MN-11/Q10: encerramento antes do fim previsto")
     class Encerramento {
 
         @ParameterizedTest(name = "encerrar às {0} → fim {1}")
