@@ -1,5 +1,6 @@
 package br.senac.qs.recursos.application.reserva;
 
+import java.sql.SQLException;
 import java.time.Clock;
 
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
@@ -13,6 +14,7 @@ import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import br.senac.qs.recursos.domain.repository.SalaRepository;
 import br.senac.qs.recursos.domain.repository.UsuarioRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,8 +50,16 @@ public class CriarReservaSala {
         var sala = salaAtiva(comando.salaId());
         garantirHorarioLivre(sala, periodo);
 
-        var reserva = reservas.save(
-                Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(), clock.instant()));
+        Reserva reserva;
+        try {
+            reserva = reservas.saveAndFlush(
+                    Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(), clock.instant()));
+        } catch (DataIntegrityViolationException e) {
+            if (sqlState(e).equals("23P01")) {
+                throw conflito(sala);
+            }
+            throw e;
+        }
         return new ReservaCriada(reserva.getId(), sala.getId(), periodo.inicio(), periodo.fim(),
                 reserva.getFinalidade(), reserva.getStatus());
     }
@@ -74,8 +84,21 @@ public class CriarReservaSala {
      */
     private void garantirHorarioLivre(Sala sala, PeriodoReserva periodo) {
         if (ocupacoes.existeSobreposicao(sala.getId(), periodo.inicio(), periodo.fim())) {
-            throw new ConflitoHorarioException("A sala " + sala.getNome()
-                    + " já está ocupada nesse horário. Escolha outro horário ou outra sala.");
+            throw conflito(sala);
         }
+    }
+
+    private static ConflitoHorarioException conflito(Sala sala) {
+        return new ConflitoHorarioException("A sala " + sala.getNome()
+                + " já está ocupada nesse horário. Escolha outro horário ou outra sala.");
+    }
+
+    private static String sqlState(Throwable erro) {
+        for (Throwable causa = erro; causa != null; causa = causa.getCause()) {
+            if (causa instanceof SQLException sql && sql.getSQLState() != null) {
+                return sql.getSQLState();
+            }
+        }
+        return "";
     }
 }
