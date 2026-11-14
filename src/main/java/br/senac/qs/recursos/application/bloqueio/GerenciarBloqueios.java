@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
 
+import br.senac.qs.recursos.application.UsuarioDoToken;
 import br.senac.qs.recursos.application.ViolacaoDeExclusao;
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
@@ -13,14 +14,11 @@ import br.senac.qs.recursos.domain.model.PeriodoReserva;
 import br.senac.qs.recursos.domain.model.Recurso;
 import br.senac.qs.recursos.domain.model.RegistroAuditoria;
 import br.senac.qs.recursos.domain.model.Reserva;
-import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.BloqueioRepository;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
 import br.senac.qs.recursos.domain.repository.RecursoRepository;
 import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
-import br.senac.qs.recursos.domain.repository.UsuarioRepository;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,16 +32,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class GerenciarBloqueios {
 
-    private final UsuarioRepository usuarios;
+    private final UsuarioDoToken usuarioDoToken;
     private final RecursoRepository recursos;
     private final OcupacaoRepository ocupacoes;
     private final BloqueioRepository bloqueios;
     private final RegistroAuditoriaRepository auditoria;
     private final Clock clock;
 
-    public GerenciarBloqueios(UsuarioRepository usuarios, RecursoRepository recursos, OcupacaoRepository ocupacoes,
+    public GerenciarBloqueios(UsuarioDoToken usuarioDoToken, RecursoRepository recursos, OcupacaoRepository ocupacoes,
                               BloqueioRepository bloqueios, RegistroAuditoriaRepository auditoria, Clock clock) {
-        this.usuarios = usuarios;
+        this.usuarioDoToken = usuarioDoToken;
         this.recursos = recursos;
         this.ocupacoes = ocupacoes;
         this.bloqueios = bloqueios;
@@ -54,7 +52,7 @@ public class GerenciarBloqueios {
     @Transactional
     public BloqueioResumo registrar(RegistrarBloqueioComando comando) {
         var periodo = new PeriodoReserva(comando.inicio(), comando.fim());
-        var autor = usuarioAtivo(comando.emailAutor());
+        var autor = usuarioDoToken.ativo(comando.emailAutor());
         var recurso = recursoAtivoTravado(comando.recursoId());
         var agora = clock.instant();
         var bloqueio = Bloqueio.registrar(autor, recurso, comando.tipo(), periodo, comando.motivo(), agora);
@@ -70,7 +68,7 @@ public class GerenciarBloqueios {
     public BloqueioResumo encerrar(Long bloqueioId, String emailAutor) {
         var bloqueio = bloqueios.findById(bloqueioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Bloqueio " + bloqueioId + " não encontrado."));
-        var autor = usuarioAtivo(emailAutor);
+        var autor = usuarioDoToken.ativo(emailAutor);
         var agora = clock.instant();
 
         bloqueio.encerrar(autor, agora);
@@ -79,12 +77,6 @@ public class GerenciarBloqueios {
         auditoria.save(RegistroAuditoria.doBloqueio(bloqueio.getId(), "ENCERRAMENTO", "ATIVO", "ENCERRADO", autor,
                 null, agora));
         return BloqueioResumo.de(bloqueio);
-    }
-
-    private Usuario usuarioAtivo(String email) {
-        return usuarios.findByEmailIgnoreCase(email)
-                .filter(Usuario::isAtivo)
-                .orElseThrow(() -> new AccessDeniedException("usuário do token inexistente ou inativo"));
     }
 
     private Recurso recursoAtivoTravado(Long recursoId) {

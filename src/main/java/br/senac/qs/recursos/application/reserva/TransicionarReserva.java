@@ -3,14 +3,13 @@ package br.senac.qs.recursos.application.reserva;
 import java.time.Clock;
 import java.time.Instant;
 
+import br.senac.qs.recursos.application.UsuarioDoToken;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
 import br.senac.qs.recursos.domain.model.RegistroAuditoria;
 import br.senac.qs.recursos.domain.model.Reserva;
 import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
-import br.senac.qs.recursos.domain.repository.UsuarioRepository;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,14 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransicionarReserva {
 
     private final ReservaRepository reservas;
-    private final UsuarioRepository usuarios;
+    private final UsuarioDoToken usuarioDoToken;
     private final RegistroAuditoriaRepository auditoria;
     private final Clock clock;
 
-    public TransicionarReserva(ReservaRepository reservas, UsuarioRepository usuarios,
+    public TransicionarReserva(ReservaRepository reservas, UsuarioDoToken usuarioDoToken,
                                RegistroAuditoriaRepository auditoria, Clock clock) {
         this.reservas = reservas;
-        this.usuarios = usuarios;
+        this.usuarioDoToken = usuarioDoToken;
         this.auditoria = auditoria;
         this.clock = clock;
     }
@@ -76,9 +75,7 @@ public class TransicionarReserva {
     private ReservaResumo executar(Long reservaId, String emailAutor, Transicao transicao) {
         var reserva = reservas.findById(reservaId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Reserva " + reservaId + " não encontrada."));
-        var autor = usuarios.findByEmailIgnoreCase(emailAutor)
-                .filter(Usuario::isAtivo)
-                .orElseThrow(() -> new AccessDeniedException("usuário do token inexistente ou inativo"));
+        var autor = usuarioDoToken.ativo(emailAutor);
 
         transicao.aplicar(reserva, autor, clock.instant());
 

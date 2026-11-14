@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 
+import br.senac.qs.recursos.application.UsuarioDoToken;
 import br.senac.qs.recursos.application.ViolacaoDeExclusao;
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
@@ -16,15 +17,12 @@ import br.senac.qs.recursos.domain.model.RegistroAuditoria;
 import br.senac.qs.recursos.domain.model.Reserva;
 import br.senac.qs.recursos.domain.model.Sala;
 import br.senac.qs.recursos.domain.model.TipoBloqueio;
-import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
 import br.senac.qs.recursos.domain.repository.RecursoRepository;
 import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import br.senac.qs.recursos.domain.repository.SalaRepository;
-import br.senac.qs.recursos.domain.repository.UsuarioRepository;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +47,7 @@ public class CriarReservaSala {
     private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    private final UsuarioRepository usuarios;
+    private final UsuarioDoToken usuarioDoToken;
     private final RecursoRepository recursos;
     private final SalaRepository salas;
     private final OcupacaoRepository ocupacoes;
@@ -57,10 +55,10 @@ public class CriarReservaSala {
     private final RegistroAuditoriaRepository auditoria;
     private final Clock clock;
 
-    public CriarReservaSala(UsuarioRepository usuarios, RecursoRepository recursos, SalaRepository salas,
+    public CriarReservaSala(UsuarioDoToken usuarioDoToken, RecursoRepository recursos, SalaRepository salas,
                             OcupacaoRepository ocupacoes, ReservaRepository reservas,
                             RegistroAuditoriaRepository auditoria, Clock clock) {
-        this.usuarios = usuarios;
+        this.usuarioDoToken = usuarioDoToken;
         this.recursos = recursos;
         this.salas = salas;
         this.ocupacoes = ocupacoes;
@@ -72,7 +70,7 @@ public class CriarReservaSala {
     @Transactional
     public ReservaResumo executar(CriarReservaSalaComando comando) {
         var periodo = new PeriodoReserva(comando.inicio(), comando.fim());
-        var solicitante = solicitanteAtivo(comando.emailSolicitante());
+        var solicitante = usuarioDoToken.ativo(comando.emailSolicitante());
         var sala = salaAtivaTravada(comando.salaId());
         garantirHorarioLivre(sala, periodo);
 
@@ -80,13 +78,6 @@ public class CriarReservaSala {
         // RC08: na mesma transação da reserva. Se a auditoria falhar, a reserva também é desfeita.
         reserva.retirarMudancas().forEach(m -> auditoria.save(RegistroAuditoria.daReserva(reserva.getId(), m)));
         return ReservaResumo.de(reserva);
-    }
-
-    /** O token é válido, mas o usuário pode ter sido desativado depois da emissão. */
-    private Usuario solicitanteAtivo(String email) {
-        return usuarios.findByEmailIgnoreCase(email)
-                .filter(Usuario::isAtivo)
-                .orElseThrow(() -> new AccessDeniedException("usuário do token inexistente ou inativo"));
     }
 
     /** Trava a sala; se ela existe mas foi desativada, a recusa diz isso em vez de "não encontrada". */

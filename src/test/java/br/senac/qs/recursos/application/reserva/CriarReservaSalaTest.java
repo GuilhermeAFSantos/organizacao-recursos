@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
+import br.senac.qs.recursos.application.UsuarioDoToken;
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.model.Reserva;
 import br.senac.qs.recursos.domain.model.Sala;
@@ -47,7 +48,7 @@ class CriarReservaSalaTest {
 
     RegistroAuditoriaRepository auditoria = mock(RegistroAuditoriaRepository.class);
 
-    CriarReservaSala casoDeUso = new CriarReservaSala(usuarios, recursos, salas, ocupacoes, reservas, auditoria,
+    CriarReservaSala casoDeUso = new CriarReservaSala(new UsuarioDoToken(usuarios), recursos, salas, ocupacoes, reservas, auditoria,
             Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC));
 
     CriarReservaSalaComando comando = new CriarReservaSalaComando("ana@senac.br", 7L, INICIO, FIM, "Aula");
