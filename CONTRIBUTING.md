@@ -76,7 +76,7 @@ não pela saída filtrada:
 - [ ] Toda regra nova tem teste. **Nada de teste trivial** só para subir a cobertura.
 - [ ] Persistência testada contra **PostgreSQL real** (Testcontainers), nunca H2.
 - [ ] Mocks **apenas** em testes de unidade isolados.
-- [ ] [RTM.md](RTM.md) atualizada: testes, evidência e status do requisito.
+- [ ] [docs/rtm.md](docs/rtm.md) atualizada: testes, evidência e status do requisito.
 - [ ] Decisão de arquitetura nova ou alterada registrada em [docs/arquitetura.md](docs/arquitetura.md).
 - [ ] Nenhum segredo no código. Credenciais vão no `.env` (fora do git; modelo em `.env.exemplo`).
 - [ ] Migration nova em vez de editar migration já commitada (Flyway).

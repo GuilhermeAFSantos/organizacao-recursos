@@ -12,7 +12,7 @@ precisa **demonstrar** qualidade, segurança, rastreabilidade e desempenho com e
 
 | Documento | Conteúdo |
 |---|---|
-| [RTM.md](RTM.md) | Matriz de rastreabilidade: requisito → risco → teste → evidência → status |
+| [docs/rtm.md](docs/rtm.md) | Matriz de rastreabilidade: requisito → risco → teste → evidência → status |
 | [docs/arquitetura.md](docs/arquitetura.md) | Camadas, modelo de domínio, estratégia anti-sobreposição, decisões e riscos |
 | [docs/diagrama-contexto.md](docs/diagrama-contexto.md) | Diagrama de contexto do sistema |
 | [docs/sequencia-criar-reserva.md](docs/sequencia-criar-reserva.md) | Sequência da criação de reserva com controle de concorrência |
@@ -47,7 +47,7 @@ com as regras RC01, RC02 e RC03; aprovação automática de recurso não restrit
 cancelamento, início de uso, não comparecimento e conclusão com a máquina de estados (RC05, RC06,
 RC07) e auditoria de cada mudança de reservas, bloqueios, usuários e recursos (RC08, RF10); manutenção e bloqueios com encerramento antecipado (RF08,
 RC04); horários em minutos cheios; tratamento de erros em
-ProblemDetail e Swagger. O restante está na [RTM](RTM.md), com status por requisito.
+ProblemDetail e Swagger. O restante está na [RTM](docs/rtm.md), com status por requisito.
 
 ## Como rodar localmente
 
