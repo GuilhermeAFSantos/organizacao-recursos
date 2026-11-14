@@ -5,7 +5,10 @@ import java.time.Clock;
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
 import br.senac.qs.recursos.domain.model.PeriodoReserva;
+import br.senac.qs.recursos.domain.model.Recurso;
 import br.senac.qs.recursos.domain.model.Reserva;
+import br.senac.qs.recursos.domain.model.Sala;
+import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import br.senac.qs.recursos.domain.repository.SalaRepository;
@@ -14,6 +17,12 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Caso de uso: um SOLICITANTE reserva uma sala (RF04).
+ *
+ * <p>Ordem das verificações: RC01 (período válido) → solicitante ativo → sala existente e ativa →
+ * RC02 (horário livre) → grava. A reserva nasce SOLICITADA e já ocupa o horário (decisão D2).
+ */
 @Service
 public class CriarReservaSala {
 
@@ -35,20 +44,38 @@ public class CriarReservaSala {
     @Transactional
     public ReservaCriada executar(CriarReservaSalaComando comando) {
         var periodo = new PeriodoReserva(comando.inicio(), comando.fim());
-        var solicitante = usuarios.findByEmailIgnoreCase(comando.emailSolicitante())
-                .filter(u -> u.isAtivo())
-                .orElseThrow(() -> new AccessDeniedException("usuário do token não está ativo"));
-        var sala = salas.findById(comando.salaId())
-                .filter(s -> s.isAtivo())
-                .orElseThrow(() -> new RecursoNaoEncontradoException(
-                        "Sala " + comando.salaId() + " não encontrada."));
+        var solicitante = solicitanteAtivo(comando.emailSolicitante());
+        var sala = salaAtiva(comando.salaId());
+        garantirHorarioLivre(sala, periodo);
+
+        var reserva = reservas.save(
+                Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(), clock.instant()));
+        return new ReservaCriada(reserva.getId(), sala.getId(), periodo.inicio(), periodo.fim(),
+                reserva.getFinalidade(), reserva.getStatus());
+    }
+
+    /** O token é válido, mas o usuário pode ter sido desativado depois da emissão. */
+    private Usuario solicitanteAtivo(String email) {
+        return usuarios.findByEmailIgnoreCase(email)
+                .filter(Usuario::isAtivo)
+                .orElseThrow(() -> new AccessDeniedException("usuário do token inexistente ou inativo"));
+    }
+
+    private Sala salaAtiva(Long salaId) {
+        return salas.findById(salaId)
+                .filter(Recurso::isAtivo)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Sala " + salaId + " não encontrada."));
+    }
+
+    /**
+     * RC02, primeira barreira: a consulta prévia dá uma mensagem clara ao usuário no caso comum.
+     * Sozinha ela NÃO basta sob concorrência (duas transações podem consultar ao mesmo tempo e ver o
+     * horário livre). A garantia definitiva é a constraint de exclusão do banco (RC03).
+     */
+    private void garantirHorarioLivre(Sala sala, PeriodoReserva periodo) {
         if (ocupacoes.existeSobreposicao(sala.getId(), periodo.inicio(), periodo.fim())) {
             throw new ConflitoHorarioException("A sala " + sala.getNome()
                     + " já está ocupada nesse horário. Escolha outro horário ou outra sala.");
         }
-        var reserva = reservas.save(Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(),
-                clock.instant()));
-        return new ReservaCriada(reserva.getId(), sala.getId(), periodo.inicio(), periodo.fim(),
-                reserva.getFinalidade(), reserva.getStatus());
     }
 }
