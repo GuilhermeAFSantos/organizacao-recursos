@@ -96,6 +96,15 @@ public class Reserva {
         return reserva;
     }
 
+    public static Reserva solicitar(Usuario solicitante, List<Recurso> recursos, PeriodoReserva periodo,
+                                    String finalidade, Instant agora) {
+        throw new UnsupportedOperationException("a implementar");
+    }
+
+    public void alterarPeriodo(Usuario autor, PeriodoReserva novo, Instant agora) {
+        throw new UnsupportedOperationException("a implementar");
+    }
+
     /** D1: sem recurso restrito, não há quem precise aprovar; o sistema aprova e isso fica auditado. */
     private void aprovarAutomaticamente(Instant agora) {
         var anterior = status;

@@ -97,7 +97,7 @@ public class RegistroAuditoria {
         var registro = new RegistroAuditoria();
         registro.entidade = ENTIDADE_RESERVA;
         registro.entidadeId = reservaId;
-        registro.acao = mudanca.anterior() == null ? "CRIACAO" : "TRANSICAO";
+        registro.acao = mudanca.acao();
         registro.estadoAnterior = mudanca.anterior() == null ? null : mudanca.anterior().name();
         registro.estadoNovo = mudanca.novo().name();
         registro.motivo = mudanca.motivo();
