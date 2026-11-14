@@ -1,15 +1,18 @@
 package br.senac.qs.recursos.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 
+import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Regra 3 de docs/testes/bdd-aprovacao-bloqueio.md (recurso em manutenção), refeita em TDD estrito.
@@ -21,6 +24,10 @@ class RegraManutencaoTest {
     static final ZoneId BRASILIA = ZoneId.of("America/Sao_Paulo");
     static final LocalDate DIA = LocalDate.of(2026, 12, 1);
     static final PeriodoReserva MANUTENCAO = periodo("10:00", "12:00");
+    static final Instant ANTES = instante("07:00");
+
+    final Sala sala101 = new Sala("Sala 101", false);
+    final Usuario adm = new Usuario("adm@senac.br", Perfil.ADMINISTRADOR);
 
     @ParameterizedTest(name = "{0}: reserva [{1}, {2}) → conflita = {3}")
     @CsvSource({
@@ -40,6 +47,17 @@ class RegraManutencaoTest {
 
         assertThat(reserva.sobrepoe(MANUTENCAO)).isEqualTo(conflita);
         assertThat(MANUTENCAO.sobrepoe(reserva)).isEqualTo(conflita);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(value = Perfil.class, names = {"SOLICITANTE", "RESPONSAVEL"})
+    @DisplayName("MN-08: só o ADMINISTRADOR registra manutenção")
+    void somenteOAdministradorRegistraManutencao(Perfil perfil) {
+        var outro = new Usuario("outro@senac.br", perfil);
+
+        assertThatThrownBy(() -> Bloqueio.registrar(outro, sala101, TipoBloqueio.MANUTENCAO, MANUTENCAO,
+                "Troca do projetor", ANTES)).isInstanceOf(OperacaoNaoPermitidaException.class)
+                .hasMessage("Somente um ADMINISTRADOR pode registrar ou encerrar bloqueios.");
     }
 
     static PeriodoReserva periodo(String inicio, String fim) {
