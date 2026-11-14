@@ -75,7 +75,7 @@ class RegraManutencaoTest {
     @DisplayName("MN-11: encerrar durante a manutenção a encurta até o próximo minuto cheio, e o recurso fica livre depois disso")
     void encerrarDuranteAManutencaoEncurtaAteOProximoMinutoCheio(String agora, String novoFim) {
         var manutencao = manutencaoDaSala101();
-        var relogio = Clock.fixed(instante(agora), ZoneOffset.UTC);
+        var relogio = relogioAs(agora);
 
         manutencao.encerrar(adm, relogio.instant());
 
@@ -91,7 +91,7 @@ class RegraManutencaoTest {
     @DisplayName("MN-11: encerrar antes do início (ou exatamente no início) desfaz a manutenção e libera o horário inteiro")
     void encerrarAntesDoInicioDesfazAManutencao(String agora) {
         var manutencao = manutencaoDaSala101();
-        var relogio = Clock.fixed(instante(agora), ZoneOffset.UTC);
+        var relogio = relogioAs(agora);
 
         assertThatCode(() -> manutencao.encerrar(adm, relogio.instant())).doesNotThrowAnyException();
 
@@ -104,7 +104,7 @@ class RegraManutencaoTest {
     @DisplayName("MN-11: encerrar no fim ou depois é recusado, porque a manutenção já terminou")
     void encerrarNoFimOuDepoisERecusado(String agora) {
         var manutencao = manutencaoDaSala101();
-        var relogio = Clock.fixed(instante(agora), ZoneOffset.UTC);
+        var relogio = relogioAs(agora);
 
         assertThatThrownBy(() -> manutencao.encerrar(adm, relogio.instant())).isInstanceOf(RegraNegocioException.class)
                 .hasMessage("Este bloqueio já terminou.");
@@ -116,7 +116,7 @@ class RegraManutencaoTest {
     @DisplayName("MN-11: encerrar uma manutenção já desfeita (encerrada antes de começar) é recusado")
     void encerrarManutencaoJaDesfeitaERecusado() {
         var manutencao = manutencaoDaSala101();
-        var relogio = Clock.fixed(ANTES, ZoneOffset.UTC);
+        var relogio = relogioAs("07:00");
         manutencao.encerrar(adm, relogio.instant());
 
         assertThatThrownBy(() -> manutencao.encerrar(adm, relogio.instant())).isInstanceOf(RegraNegocioException.class)
@@ -128,7 +128,7 @@ class RegraManutencaoTest {
     void somenteOAdministradorEncerraAManutencao() {
         var manutencao = manutencaoDaSala101();
         var rita = new Usuario("rita@senac.br", Perfil.RESPONSAVEL);
-        var relogio = Clock.fixed(instante("10:30"), ZoneOffset.UTC);
+        var relogio = relogioAs("10:30");
 
         assertThatThrownBy(() -> manutencao.encerrar(rita, relogio.instant()))
                 .isInstanceOf(OperacaoNaoPermitidaException.class)
@@ -139,6 +139,11 @@ class RegraManutencaoTest {
 
     Bloqueio manutencaoDaSala101() {
         return Bloqueio.registrar(adm, sala101, TipoBloqueio.MANUTENCAO, MANUTENCAO, "Troca do projetor", ANTES);
+    }
+
+    /** Relógio fixo no horário (Brasília) do dia dos exemplos: o "agora" das regras de manutenção. */
+    static Clock relogioAs(String hora) {
+        return Clock.fixed(instante(hora), ZoneOffset.UTC);
     }
 
     static PeriodoReserva periodo(String inicio, String fim) {
