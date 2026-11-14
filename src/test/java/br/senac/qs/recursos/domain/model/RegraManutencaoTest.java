@@ -123,6 +123,20 @@ class RegraManutencaoTest {
                 .hasMessage("Este bloqueio já foi encerrado.");
     }
 
+    @Test
+    @DisplayName("MN-08 (encerramento): só o ADMINISTRADOR encerra a manutenção, que continua como estava")
+    void somenteOAdministradorEncerraAManutencao() {
+        var manutencao = manutencaoDaSala101();
+        var rita = new Usuario("rita@senac.br", Perfil.RESPONSAVEL);
+        var relogio = Clock.fixed(instante("10:30"), ZoneOffset.UTC);
+
+        assertThatThrownBy(() -> manutencao.encerrar(rita, relogio.instant()))
+                .isInstanceOf(OperacaoNaoPermitidaException.class)
+                .hasMessage("Somente um ADMINISTRADOR pode registrar ou encerrar bloqueios.");
+
+        assertThat(manutencao.getPeriodo()).isEqualTo(MANUTENCAO);
+    }
+
     Bloqueio manutencaoDaSala101() {
         return Bloqueio.registrar(adm, sala101, TipoBloqueio.MANUTENCAO, MANUTENCAO, "Troca do projetor", ANTES);
     }
