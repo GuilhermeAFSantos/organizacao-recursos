@@ -3,10 +3,12 @@ package br.senac.qs.recursos.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
 import org.junit.jupiter.api.DisplayName;
@@ -58,6 +60,30 @@ class RegraManutencaoTest {
         assertThatThrownBy(() -> Bloqueio.registrar(outro, sala101, TipoBloqueio.MANUTENCAO, MANUTENCAO,
                 "Troca do projetor", ANTES)).isInstanceOf(OperacaoNaoPermitidaException.class)
                 .hasMessage("Somente um ADMINISTRADOR pode registrar ou encerrar bloqueios.");
+    }
+
+    @ParameterizedTest(name = "encerrada às {0} → termina às {1}")
+    @CsvSource({
+        "10:37:42, 10:38",
+        "10:37:00, 10:37",
+        "11:59:01, 12:00"
+    })
+    @DisplayName("MN-11: encerrar durante a manutenção a encurta até o próximo minuto cheio, e o recurso fica livre depois disso")
+    void encerrarDuranteAManutencaoEncurtaAteOProximoMinutoCheio(String agora, String novoFim) {
+        var manutencao = manutencaoDaSala101();
+        var relogio = Clock.fixed(instante(agora), ZoneOffset.UTC);
+
+        manutencao.encerrar(adm, relogio.instant());
+
+        assertThat(manutencao.getPeriodo()).isEqualTo(periodo("10:00", novoFim));
+        assertThat(manutencao.getOcupacoes()).allSatisfy(o -> {
+            assertThat(o.isBloqueante()).isTrue();
+            assertThat(o.getPeriodo()).isEqualTo(periodo("10:00", novoFim));
+        });
+    }
+
+    Bloqueio manutencaoDaSala101() {
+        return Bloqueio.registrar(adm, sala101, TipoBloqueio.MANUTENCAO, MANUTENCAO, "Troca do projetor", ANTES);
     }
 
     static PeriodoReserva periodo(String inicio, String fim) {
