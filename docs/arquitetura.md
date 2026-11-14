@@ -114,15 +114,37 @@ as duas veem o horário livre e as duas fazem `INSERT` (corrida *check-then-inse
 `SERIALIZABLE` também resolveria, mas exige nova tentativa após qualquer falha de serialização,
 inclusive falsos positivos. Descartado.
 
-**Escolha: defesa em três camadas.**
+**Escolha: defesa em camadas** (revisada na Etapa 3; ver 3.1).
 
-1. **Aplicação:** valida a RC01 e consulta conflitos antes de gravar. Gera uma mensagem útil e
-   registra o conflito evitado com origem `APLICACAO`. Não garante nada sob concorrência.
-2. **Banco:** `EXCLUDE USING gist (recurso_id WITH =, periodo WITH &&) WHERE (bloqueante)` é a
-   **garantia real**. `23P01` vira `ConflitoHorarioException` (HTTP 409) e o conflito é registrado
-   com origem `BANCO`. Usar `saveAndFlush` para o erro surgir dentro do caso de uso, e não no
-   commit (onde viraria um 500).
-3. **`@Version`** em Reserva e Recurso: transições concorrentes recebem 409 "edição concorrente".
+1. **Lock pessimista no recurso:** `SELECT … FOR NO KEY UPDATE` na linha da sala **antes** da
+   pré-checagem. Serializa as reservas do mesmo recurso.
+2. **Aplicação:** valida a RC01 e consulta conflitos antes de gravar. Gera uma mensagem útil e
+   registra o conflito evitado com origem `APLICACAO`. Com o lock, a consulta é confiável também
+   sob concorrência.
+3. **Banco:** `EXCLUDE USING gist (recurso_id WITH =, periodo WITH &&) WHERE (bloqueante)` é a
+   **garantia final**, que vale até para código que esqueça o lock. `23P01` vira
+   `ConflitoHorarioException` (HTTP 409) e o conflito é registrado com origem `BANCO`. Usar
+   `saveAndFlush` para o erro surgir dentro do caso de uso, e não no commit.
+4. **`@Version`** em Reserva e Recurso: transições concorrentes recebem 409 "edição concorrente".
+
+### 3.1 O que o teste de concorrência ensinou
+
+A primeira versão usava só a pré-checagem e a constraint. O teste RC03 (20 requisições
+simultâneas, em 10 rodadas) mostrou:
+
+- **A unicidade nunca foi violada:** sempre exatamente 1 reserva gravada.
+- **Mas houve deadlock** em 3 de 10 rodadas (`40P01 deadlock detected … while checking exclusion
+  constraint`), e o usuário recebia **500**. A constraint de exclusão verifica conflitos *depois*
+  de inserir no índice; duas inserções conflitantes simultâneas esperam uma pela outra, e o
+  PostgreSQL aborta uma delas. (`UNIQUE` não tem esse problema; a constraint de exclusão tem.)
+
+Correção: travar a linha do recurso antes da pré-checagem. Depois dela, foram 30 de 30 rodadas
+sem deadlock, e o teste ficou cerca de 25× mais rápido. **Conclusão:** lock pessimista e constraint
+não são alternativas, e sim camadas complementares. O lock garante o comportamento correto
+(409 com mensagem certa, sem deadlock) e a constraint garante a regra mesmo se o lock for
+esquecido. Para reservas com vários recursos, travar sempre em **ordem crescente de id**, para
+evitar deadlock entre recursos. Os commits `d485436` (red) e `de862b9` (green) registram essa
+mudança.
 
 **Por que funciona:** como `UNIQUE`, a constraint de exclusão também enxerga linhas ainda não
 confirmadas de outra transação. T2 encontra a linha conflitante de T1 e **espera**. Se T1 confirmar,
@@ -150,6 +172,7 @@ A extensão `btree_gist` permite combinar `=` em `BIGINT` com `&&` em `tstzrange
 | Prazo (semana 46) | Projeto | Priorizar as RC e a RTM; confirmar a data com o professor |
 | Código gerado com IA e prova oral | Processo | Cada integrante é dono de uma fatia e revisa os PRs dos outros |
 | `23P01` escapar como 500 | Técnico | `saveAndFlush` + teste de API exigindo 409 |
+| **Deadlock `40P01`** entre inserções conflitantes (ocorreu na Etapa 3) | Técnico | Lock do recurso antes da pré-checagem; teste de concorrência com 10 rodadas |
 | Teste de concorrência instável | Técnico | `CountDownLatch` como portão de largada; N ≥ 10; verificar 1 resposta 201, N−1 respostas 409 e nenhum 500; teste repetido |
 | `inicio`/`fim` de `reserva` e `ocupacao` dessincronizados | Técnico | Atualizar tudo na mesma transação + teste de integração |
 | Testes dependem de Docker (Testcontainers) | Técnico | Docker Desktop em todas as máquinas; o runner do CI já tem Docker |

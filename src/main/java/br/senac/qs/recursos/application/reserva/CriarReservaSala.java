@@ -22,8 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Caso de uso: um SOLICITANTE reserva uma sala (RF04).
  *
- * <p>Ordem das verificações: RC01 (período válido) → solicitante ativo → sala existente e ativa →
- * RC02 (horário livre) → grava. A reserva nasce SOLICITADA e já ocupa o horário (decisão D2).
+ * <p>Ordem das verificações: RC01 (período válido) → solicitante ativo → sala existente e ativa,
+ * já TRAVADA → RC02 (horário livre) → grava. A reserva nasce SOLICITADA e já ocupa o horário (D2).
+ *
+ * <p>Concorrência (RC03), em camadas:
+ * <ol>
+ *   <li><b>Lock da sala</b>: serializa as reservas do mesmo recurso; a pré-checagem passa a ver a
+ *       reserva que acabou de ser confirmada e responde 409 com mensagem clara.</li>
+ *   <li><b>Constraint de exclusão</b>: garantia final, mesmo para código que esqueça o lock.
+ *       Sua recusa (23P01) também vira 409.</li>
+ * </ol>
  */
 @Service
 public class CriarReservaSala {
@@ -50,7 +58,7 @@ public class CriarReservaSala {
     public ReservaCriada executar(CriarReservaSalaComando comando) {
         var periodo = new PeriodoReserva(comando.inicio(), comando.fim());
         var solicitante = solicitanteAtivo(comando.emailSolicitante());
-        var sala = salaAtiva(comando.salaId());
+        var sala = salaAtivaTravada(comando.salaId());
         garantirHorarioLivre(sala, periodo);
 
         var reserva = gravar(Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(), clock.instant()), sala);
@@ -65,16 +73,15 @@ public class CriarReservaSala {
                 .orElseThrow(() -> new AccessDeniedException("usuário do token inexistente ou inativo"));
     }
 
-    private Sala salaAtiva(Long salaId) {
+    private Sala salaAtivaTravada(Long salaId) {
         return salas.travarParaReserva(salaId)
                 .filter(Recurso::isAtivo)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Sala " + salaId + " não encontrada."));
     }
 
     /**
-     * RC02, primeira barreira: a consulta prévia dá uma mensagem clara ao usuário no caso comum.
-     * Sozinha ela NÃO basta sob concorrência (duas transações podem consultar ao mesmo tempo e ver o
-     * horário livre). A garantia definitiva é a constraint de exclusão do banco (RC03).
+     * RC02 na aplicação: mensagem clara ao usuário. Só é confiável sob concorrência porque a sala já
+     * está travada; sem o lock, duas transações poderiam consultar ao mesmo tempo e ver o horário livre.
      */
     private void garantirHorarioLivre(Sala sala, PeriodoReserva periodo) {
         if (ocupacoes.existeSobreposicao(sala.getId(), periodo.inicio(), periodo.fim())) {
