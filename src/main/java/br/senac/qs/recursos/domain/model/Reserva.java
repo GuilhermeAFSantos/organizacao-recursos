@@ -206,6 +206,9 @@ public class Reserva {
                     "Somente quem solicitou a reserva ou um ADMINISTRADOR pode cancelá-la.");
         }
         exigirTransicaoPara(CANCELADA);
+        if (status == APROVADA && jaComecou(agora)) {
+            throw new RegraNegocioException("Uma reserva aprovada só pode ser cancelada antes do horário de início.");
+        }
         mudarPara(CANCELADA, autor, motivo, agora);
     }
 
