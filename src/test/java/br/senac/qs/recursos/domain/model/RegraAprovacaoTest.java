@@ -187,6 +187,16 @@ class RegraAprovacaoTest {
         }
     }
 
+    @Test
+    @DisplayName("AU-04 (rejeição): RESPONSAVEL também não rejeita reserva solicitada por ele mesmo")
+    void responsavelNaoRejeitaReservaQueEleMesmoSolicitou() {
+        var daRita = Reserva.solicitar(rita, List.of(laboratorio), PERIODO, "Reunião", AGORA);
+
+        assertThatThrownBy(() -> daRita.rejeitar(rita, "Desisti", AGORA)).isInstanceOf(OperacaoNaoPermitidaException.class)
+                .hasMessage("Você não pode aprovar ou rejeitar uma reserva solicitada por você.");
+        assertThat(daRita.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
+    }
+
     static void decidir(Reserva reserva, String acao, Usuario autor) {
         if (acao.equals("aprovar")) {
             reserva.aprovar(autor, AGORA);
