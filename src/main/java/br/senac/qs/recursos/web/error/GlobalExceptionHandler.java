@@ -55,6 +55,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     public static final String PROPRIEDADE_ERROS = "erros";
     public static final String PROPRIEDADE_CODIGO_ERRO = "codigoErro";
+    public static final String PROPRIEDADE_RESERVAS_EM_CONFLITO = "reservasEmConflito";
 
     static final String DETALHE_DADOS_INVALIDOS = "Um ou mais campos estão inválidos. Corrija-os e tente novamente.";
     static final String DETALHE_CORPO_ILEGIVEL = "O corpo da requisição está ausente ou malformado. Verifique o JSON, "
@@ -94,7 +95,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ConflitoHorarioException.class)
     ResponseEntity<ProblemDetail> conflitoHorario(ConflitoHorarioException ex, HttpServletRequest req) {
-        return responder(TipoProblema.CONFLITO_HORARIO.criar(ex.getMessage(), req.getRequestURI(), clock));
+        var problema = TipoProblema.CONFLITO_HORARIO.criar(ex.getMessage(), req.getRequestURI(), clock);
+        if (!ex.getReservasEmConflito().isEmpty()) {
+            problema.setProperty(PROPRIEDADE_RESERVAS_EM_CONFLITO, ex.getReservasEmConflito());
+        }
+        return responder(problema);
     }
 
     @ExceptionHandler(RegraNegocioException.class)

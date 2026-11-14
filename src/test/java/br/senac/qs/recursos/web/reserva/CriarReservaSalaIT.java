@@ -139,7 +139,7 @@ class CriarReservaSalaIT {
             10:00:00 | 12:00:00 | começa exatamente quando a outra termina | 201
             06:00:00 | 08:00:00 | termina exatamente quando a outra começa | 201
             09:00:00 | 11:00:00 | sobreposição parcial                     | 409
-            07:00:00 | 08:00:01 | cruza 1 segundo                          | 409
+            07:00:00 | 08:01:00 | cruza 1 minuto                           | 409
             08:00:00 | 10:00:00 | mesmo horário                            | 409
             """)
         void verificaSobreposicao(String inicio, String fim, String caso, int statusEsperado) {
@@ -193,6 +193,18 @@ class CriarReservaSalaIT {
                     "salaId", sala, "inicio", "2026-12-01T08:00:00", "fim", "2026-12-01T10:00:00", "finalidade", "Aula"));
 
             assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(cenario.contarReservas(sala)).isZero();
+        }
+
+        @Test
+        @DisplayName("Q3: horário com segundos → 400 apontando o campo")
+        void horarioComSegundos() {
+            var resposta = reservar(tokenSolicitante, Map.of(
+                    "salaId", sala, "inicio", "2026-12-01T08:00:30-03:00", "fim", "2026-12-01T10:00:00-03:00",
+                    "finalidade", "Aula"));
+
+            assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(resposta.getBody().get("erros").findValuesAsText("campo")).containsExactly("inicio");
             assertThat(cenario.contarReservas(sala)).isZero();
         }
 

@@ -1,5 +1,7 @@
 package br.senac.qs.recursos.domain.model;
 
+import java.time.Instant;
+
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -26,6 +28,10 @@ public class Ocupacao {
     @JoinColumn(name = "reserva_id")
     private Reserva reserva;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bloqueio_id")
+    private Bloqueio bloqueio;
+
     @Embedded
     private PeriodoReserva periodo;
 
@@ -41,8 +47,34 @@ public class Ocupacao {
         this.bloqueante = true;
     }
 
+    Ocupacao(Bloqueio bloqueio, Recurso recurso, PeriodoReserva periodo) {
+        this.bloqueio = bloqueio;
+        this.recurso = recurso;
+        this.periodo = periodo;
+        this.bloqueante = true;
+    }
+
     public Recurso getRecurso() {
         return recurso;
+    }
+
+    public PeriodoReserva getPeriodo() {
+        return periodo;
+    }
+
+    /** Reserva que gerou esta ocupação; nula quando a origem é um bloqueio. */
+    public Reserva getReserva() {
+        return reserva;
+    }
+
+    /** Bloqueio que gerou esta ocupação; nulo quando a origem é uma reserva. */
+    public Bloqueio getBloqueio() {
+        return bloqueio;
+    }
+
+    /** Encurta o período, mantendo o início (bloqueio encerrado antes do previsto). */
+    void encurtarAte(Instant novoFim) {
+        this.periodo = new PeriodoReserva(periodo.inicio(), novoFim);
     }
 
     public boolean isBloqueante() {

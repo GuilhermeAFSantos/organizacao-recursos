@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
@@ -17,6 +18,7 @@ import br.senac.qs.recursos.domain.model.Reserva;
 import br.senac.qs.recursos.domain.model.Sala;
 import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
+import br.senac.qs.recursos.domain.repository.RecursoRepository;
 import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import br.senac.qs.recursos.domain.repository.SalaRepository;
@@ -38,13 +40,14 @@ class CriarReservaSalaTest {
     static final Instant FIM = Instant.parse("2026-12-01T13:00:00Z");
 
     UsuarioRepository usuarios = mock(UsuarioRepository.class);
+    RecursoRepository recursos = mock(RecursoRepository.class);
     SalaRepository salas = mock(SalaRepository.class);
     OcupacaoRepository ocupacoes = mock(OcupacaoRepository.class);
     ReservaRepository reservas = mock(ReservaRepository.class);
 
     RegistroAuditoriaRepository auditoria = mock(RegistroAuditoriaRepository.class);
 
-    CriarReservaSala casoDeUso = new CriarReservaSala(usuarios, salas, ocupacoes, reservas, auditoria,
+    CriarReservaSala casoDeUso = new CriarReservaSala(usuarios, recursos, salas, ocupacoes, reservas, auditoria,
             Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC));
 
     CriarReservaSalaComando comando = new CriarReservaSalaComando("ana@senac.br", 7L, INICIO, FIM, "Aula");
@@ -59,9 +62,10 @@ class CriarReservaSalaTest {
         when(sala.isAtivo()).thenReturn(true);
 
         when(usuarios.findByEmailIgnoreCase("ana@senac.br")).thenReturn(Optional.of(usuario));
-        when(salas.travarParaReserva(7L)).thenReturn(Optional.of(sala));
+        when(recursos.travar(7L)).thenReturn(Optional.of(7L));
+        when(salas.findById(7L)).thenReturn(Optional.of(sala));
         // A outra transação ainda não confirmou: a consulta prévia vê o horário livre.
-        when(ocupacoes.existeSobreposicao(7L, INICIO, FIM)).thenReturn(false);
+        when(ocupacoes.sobrepostas(7L, INICIO, FIM)).thenReturn(List.of());
     }
 
     @Test
