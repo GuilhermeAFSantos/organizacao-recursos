@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
+import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
 import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -83,6 +84,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     ResponseEntity<ProblemDetail> naoEncontrado(RecursoNaoEncontradoException ex, HttpServletRequest req) {
         return responder(TipoProblema.NAO_ENCONTRADO.criar(ex.getMessage(), req.getRequestURI(), clock));
+    }
+
+    /** Perfil até pode agir, mas não sobre ESTA reserva (ex.: cancelar a reserva de outra pessoa). */
+    @ExceptionHandler(OperacaoNaoPermitidaException.class)
+    ResponseEntity<ProblemDetail> operacaoNaoPermitida(OperacaoNaoPermitidaException ex, HttpServletRequest req) {
+        return responder(TipoProblema.ACESSO_NEGADO.criar(ex.getMessage(), req.getRequestURI(), clock));
     }
 
     @ExceptionHandler(ConflitoHorarioException.class)
