@@ -74,6 +74,9 @@ public class Bloqueio {
      * minuto cheio (Q3); antes de começar, o bloqueio inteiro é desfeito.
      */
     public void encerrar(Usuario administrador, Instant agora) {
+        if (!agora.isBefore(periodo.fim())) {
+            throw new RegraNegocioException("Este bloqueio já terminou.");
+        }
         var novoFim = proximoMinutoCheio(agora);
         if (novoFim.isAfter(periodo.inicio())) {
             encurtarAte(novoFim);
