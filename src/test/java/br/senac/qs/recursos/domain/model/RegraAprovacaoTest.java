@@ -8,9 +8,11 @@ import java.time.Instant;
 import java.util.List;
 
 import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
+import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -141,6 +143,19 @@ class RegraAprovacaoTest {
             assertThat(m.motivo()).isEqualTo("Laboratório reservado para prova");
         });
         assertThat(reserva.getOcupacoes()).allSatisfy(o -> assertThat(o.isBloqueante()).isFalse());
+    }
+
+    @ParameterizedTest(name = "motivo [{0}]")
+    @NullAndEmptySource
+    @ValueSource(strings = "   ")
+    @DisplayName("AP-07: rejeição sem motivo é recusada e a reserva continua SOLICITADA")
+    void rejeicaoSemMotivoERecusada(String motivo) {
+        var reserva = solicitar(laboratorio);
+
+        assertThatThrownBy(() -> reserva.rejeitar(rita, motivo, AGORA)).isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Informe o motivo da rejeição.");
+
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
     }
 
     static void decidir(Reserva reserva, String acao, Usuario autor) {
