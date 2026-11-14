@@ -65,6 +65,34 @@ class ReservaTest {
     }
 
     @Nested
+    @DisplayName("AP-01/AP-03: aprovação automática quando nenhum recurso é restrito (D1)")
+    class AprovacaoAutomatica {
+
+        @Test
+        @DisplayName("sala não restrita: nasce APROVADA, com a aprovação registrada em nome do sistema")
+        void salaNaoRestrita() {
+            var sala = new Sala("Sala 101", false);
+
+            var automatica = Reserva.solicitar(ana, sala, new PeriodoReserva(INICIO, FIM), "Aula", ANTES);
+
+            assertThat(automatica.getStatus()).isEqualTo(APROVADA);
+            assertThat(automatica.getAprovador()).as("sem aprovador humano").isNull();
+            assertThat(automatica.retirarMudancas()).containsExactly(
+                    new MudancaDeEstado(null, SOLICITADA, null, "ana@senac.br", null, ANTES),
+                    new MudancaDeEstado(SOLICITADA, APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA,
+                            "Nenhum recurso é restrito: aprovação automática.", ANTES));
+            assertThat(automatica.getOcupacoes()).allSatisfy(o -> assertThat(o.isBloqueante()).isTrue());
+        }
+
+        @Test
+        @DisplayName("recurso restrito: continua SOLICITADA, aguardando um RESPONSAVEL")
+        void recursoRestrito() {
+            assertThat(reserva.getStatus()).isEqualTo(SOLICITADA);
+            assertThat(reserva.retirarMudancas()).hasSize(1);
+        }
+    }
+
+    @Nested
     @DisplayName("Aprovação (RF07, RC06)")
     class Aprovacao {
 

@@ -51,13 +51,15 @@ class CriarReservaSalaIT {
     JdbcTemplate jdbc;
 
     CenarioBanco cenario;
+    String emailSolicitante;
     String tokenSolicitante;
     long sala;
 
     @BeforeEach
     void prepararCenario() {
         cenario = new CenarioBanco(jdbc);
-        tokenSolicitante = token(cenario.criarUsuario("SOLICITANTE"), "SOLICITANTE");
+        emailSolicitante = cenario.criarUsuario("SOLICITANTE");
+        tokenSolicitante = token(emailSolicitante, "SOLICITANTE");
         sala = cenario.criarSala();
     }
 
@@ -73,9 +75,31 @@ class CriarReservaSalaIT {
         assertThat(reserva.get("inicio").asText()).isEqualTo("2026-12-01T11:00:00Z");
         assertThat(reserva.get("fim").asText()).isEqualTo("2026-12-01T13:00:00Z");
         assertThat(reserva.get("finalidade").asText()).isEqualTo("Aula de Qualidade de Software");
-        // Aprovação automática de recurso não restrito (decisão D1) chega na fatia de aprovação.
-        assertThat(reserva.get("status").asText()).isEqualTo("SOLICITADA");
         assertThat(cenario.contarOcupacoesBloqueantes(sala)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("AP-01/RC08: sala não restrita é aprovada automaticamente e as 2 mudanças vão para a auditoria")
+    void aprovacaoAutomaticaAuditada() {
+        var resposta = reservar(tokenSolicitante, corpo(sala, "08:00:00", "10:00:00"));
+
+        assertThat(resposta.getBody().get("status").asText()).isEqualTo("APROVADA");
+        assertThat(cenario.auditoriaDaReserva(resposta.getBody().get("id").asLong())).containsExactly(
+                "—→SOLICITADA por " + emailSolicitante,
+                "SOLICITADA→APROVADA por sistema");
+    }
+
+    @Test
+    @DisplayName("AP-02/RC08: sala restrita fica SOLICITADA, já ocupa o horário e a criação é auditada")
+    void salaRestritaAguardaAprovacao() {
+        long restrita = cenario.criarSala(true);
+
+        var resposta = reservar(tokenSolicitante, corpo(restrita, "08:00:00", "10:00:00"));
+
+        assertThat(resposta.getBody().get("status").asText()).isEqualTo("SOLICITADA");
+        assertThat(cenario.contarOcupacoesBloqueantes(restrita)).isEqualTo(1);
+        assertThat(cenario.auditoriaDaReserva(resposta.getBody().get("id").asLong()))
+                .containsExactly("—→SOLICITADA por " + emailSolicitante);
     }
 
     @Nested
