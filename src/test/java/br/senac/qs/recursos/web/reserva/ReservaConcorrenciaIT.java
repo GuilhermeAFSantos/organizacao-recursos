@@ -105,6 +105,8 @@ class ReservaConcorrenciaIT {
 
         assertThat(cenario.contarReservas(sala)).as("reservas gravadas").isEqualTo(1);
         assertThat(cenario.contarOcupacoesBloqueantes(sala)).as("ocupações bloqueantes").isEqualTo(1);
+        assertThat(cenario.contarConflitosEvitados(sala)).as("cada recusa registrada como conflito evitado (RF12)")
+                .isEqualTo(SOLICITACOES - 1);
     }
 
     private Resultado reservar(String token, long sala) {

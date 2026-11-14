@@ -65,6 +65,11 @@ public class CenarioBanco {
                 String.class, reservaId);
     }
 
+    public int contarConflitosEvitados(long recursoId) {
+        return jdbc.queryForObject("SELECT count(*) FROM conflito_evitado WHERE recurso_id = ?", Integer.class,
+                recursoId);
+    }
+
     public int contarOcupacoesBloqueantes(long salaId) {
         return jdbc.queryForObject("SELECT count(*) FROM ocupacao WHERE recurso_id = ? AND bloqueante",
                 Integer.class, salaId);
