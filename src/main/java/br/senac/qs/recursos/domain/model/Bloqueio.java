@@ -74,7 +74,12 @@ public class Bloqueio {
      * minuto cheio (Q3); antes de começar, o bloqueio inteiro é desfeito.
      */
     public void encerrar(Usuario administrador, Instant agora) {
-        // Prática de TDD estrito: regra removida, a ser refeita no cenário MN-11.
+        var truncado = agora.truncatedTo(ChronoUnit.MINUTES);
+        var novoFim = truncado.equals(agora) ? truncado : truncado.plus(1, ChronoUnit.MINUTES);
+        periodo = new PeriodoReserva(periodo.inicio(), novoFim);
+        for (Ocupacao ocupacao : ocupacoes) {
+            ocupacao.encurtarAte(novoFim);
+        }
     }
 
     private static void exigirAdministrador(Usuario usuario) {
