@@ -24,3 +24,38 @@ application-secret*.yml
 # Logs e resultados do JMeter
 *.log
 jmeter/resultados/
+
+# Environment & Secrets (AIOX)
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Dependencies (AIOX)
+node_modules/
+node_modules
+
+# Build & Logs (AIOX)
+dist/
+build/
+logs/
+
+# AIOX Local (AIOX)
+.aiox-core/local/
+.claude/settings.local.json
+.aiox/install-log.txt
+
+# AIOX instalado SÓ LOCALMENTE (decisão da equipe): o framework não faz parte do sistema
+# avaliado e não deve entrar no repositório, nos PRs nem na análise do SonarCloud.
+# Para usar, cada integrante instala na própria máquina, na raiz do projeto:
+#   npx aiox-core@5.4.1 install
+.aiox-core/
+.aiox/
+.claude/
+.antigravity/
+.codex/
+.cursor/
+.gemini/
+.kimi/
+.github/agents/
+.env.example
