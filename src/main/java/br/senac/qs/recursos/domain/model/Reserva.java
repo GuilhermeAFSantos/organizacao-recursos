@@ -196,6 +196,10 @@ public class Reserva {
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
+        if (!autor.mesmaPessoaQue(solicitante) && autor.getPerfil() != Perfil.ADMINISTRADOR) {
+            throw new OperacaoNaoPermitidaException(
+                    "Somente quem solicitou a reserva ou um ADMINISTRADOR pode cancelá-la.");
+        }
         exigirTransicaoPara(CANCELADA);
         mudarPara(CANCELADA, autor, motivo, agora);
     }
