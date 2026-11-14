@@ -28,6 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CriarReservaSala {
 
+    /** SQLSTATE do PostgreSQL para {@code exclusion_violation}. */
+    static final String SQLSTATE_VIOLACAO_EXCLUSAO = "23P01";
+
     private final UsuarioRepository usuarios;
     private final SalaRepository salas;
     private final OcupacaoRepository ocupacoes;
@@ -50,16 +53,7 @@ public class CriarReservaSala {
         var sala = salaAtiva(comando.salaId());
         garantirHorarioLivre(sala, periodo);
 
-        Reserva reserva;
-        try {
-            reserva = reservas.saveAndFlush(
-                    Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(), clock.instant()));
-        } catch (DataIntegrityViolationException e) {
-            if (sqlState(e).equals("23P01")) {
-                throw conflito(sala);
-            }
-            throw e;
-        }
+        var reserva = gravar(Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(), clock.instant()), sala);
         return new ReservaCriada(reserva.getId(), sala.getId(), periodo.inicio(), periodo.fim(),
                 reserva.getFinalidade(), reserva.getStatus());
     }
@@ -88,17 +82,36 @@ public class CriarReservaSala {
         }
     }
 
+    /**
+     * RC02/RC03, barreira definitiva: a constraint de exclusão do banco.
+     *
+     * <p>Se outra transação gravou uma ocupação conflitante depois da nossa pré-checagem, o
+     * PostgreSQL faz esta gravação ESPERAR a outra terminar e, se ela confirmar, recusa com
+     * SQLSTATE 23P01. {@code saveAndFlush} força o INSERT agora, para o erro surgir aqui (e não no
+     * commit), onde ainda dá para traduzi-lo em uma mensagem de negócio.
+     */
+    private Reserva gravar(Reserva reserva, Sala sala) {
+        try {
+            return reservas.saveAndFlush(reserva);
+        } catch (DataIntegrityViolationException e) {
+            if (ehViolacaoDeExclusao(e)) {
+                throw conflito(sala);
+            }
+            throw e; // outra violação (FK, CHECK...) não é conflito de horário: não mascarar
+        }
+    }
+
     private static ConflitoHorarioException conflito(Sala sala) {
         return new ConflitoHorarioException("A sala " + sala.getNome()
                 + " já está ocupada nesse horário. Escolha outro horário ou outra sala.");
     }
 
-    private static String sqlState(Throwable erro) {
+    private static boolean ehViolacaoDeExclusao(Throwable erro) {
         for (Throwable causa = erro; causa != null; causa = causa.getCause()) {
-            if (causa instanceof SQLException sql && sql.getSQLState() != null) {
-                return sql.getSQLState();
+            if (causa instanceof SQLException sql) {
+                return SQLSTATE_VIOLACAO_EXCLUSAO.equals(sql.getSQLState());
             }
         }
-        return "";
+        return false;
     }
 }
