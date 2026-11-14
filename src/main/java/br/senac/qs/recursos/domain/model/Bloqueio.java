@@ -75,9 +75,13 @@ public class Bloqueio {
      */
     public void encerrar(Usuario administrador, Instant agora) {
         var novoFim = proximoMinutoCheio(agora);
-        periodo = new PeriodoReserva(periodo.inicio(), novoFim);
-        for (Ocupacao ocupacao : ocupacoes) {
-            ocupacao.encurtarAte(novoFim);
+        if (novoFim.isAfter(periodo.inicio())) {
+            periodo = new PeriodoReserva(periodo.inicio(), novoFim);
+            for (Ocupacao ocupacao : ocupacoes) {
+                ocupacao.encurtarAte(novoFim);
+            }
+        } else {
+            ocupacoes.forEach(Ocupacao::liberar);
         }
     }
 
