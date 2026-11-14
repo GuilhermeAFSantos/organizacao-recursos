@@ -127,6 +127,22 @@ class RegraAprovacaoTest {
         assertThat(daRita.getAprovador()).isSameAs(raul);
     }
 
+    @Test
+    @DisplayName("AP-06: RESPONSAVEL rejeita com motivo: REJEITADA, motivo registrado e horário liberado")
+    void responsavelRejeitaComMotivoEOHorarioELiberado() {
+        var reserva = solicitar(laboratorio);
+        reserva.retirarMudancas();
+
+        reserva.rejeitar(rita, "Laboratório reservado para prova", AGORA);
+
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.REJEITADA);
+        assertThat(reserva.retirarMudancas()).singleElement().satisfies(m -> {
+            assertThat(m.novo()).isEqualTo(StatusReserva.REJEITADA);
+            assertThat(m.motivo()).isEqualTo("Laboratório reservado para prova");
+        });
+        assertThat(reserva.getOcupacoes()).allSatisfy(o -> assertThat(o.isBloqueante()).isFalse());
+    }
+
     static void decidir(Reserva reserva, String acao, Usuario autor) {
         if (acao.equals("aprovar")) {
             reserva.aprovar(autor, AGORA);
