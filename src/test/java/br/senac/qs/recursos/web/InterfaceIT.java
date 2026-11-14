@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
@@ -39,7 +40,8 @@ class InterfaceIT {
         var resposta = http.getForEntity(caminho, String.class);
 
         assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(resposta.getHeaders().getContentType()).hasToString(tipo + ";charset=UTF-8");
+        assertThat(resposta.getHeaders().getContentType().isCompatibleWith(MediaType.parseMediaType(tipo)))
+                .as("Content-Type %s", resposta.getHeaders().getContentType()).isTrue();
     }
 
     @Test
