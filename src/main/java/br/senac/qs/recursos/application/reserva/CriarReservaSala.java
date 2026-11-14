@@ -7,10 +7,12 @@ import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
 import br.senac.qs.recursos.domain.model.PeriodoReserva;
 import br.senac.qs.recursos.domain.model.Recurso;
+import br.senac.qs.recursos.domain.model.RegistroAuditoria;
 import br.senac.qs.recursos.domain.model.Reserva;
 import br.senac.qs.recursos.domain.model.Sala;
 import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
+import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import br.senac.qs.recursos.domain.repository.SalaRepository;
 import br.senac.qs.recursos.domain.repository.UsuarioRepository;
@@ -43,14 +45,16 @@ public class CriarReservaSala {
     private final SalaRepository salas;
     private final OcupacaoRepository ocupacoes;
     private final ReservaRepository reservas;
+    private final RegistroAuditoriaRepository auditoria;
     private final Clock clock;
 
     public CriarReservaSala(UsuarioRepository usuarios, SalaRepository salas, OcupacaoRepository ocupacoes,
-                            ReservaRepository reservas, Clock clock) {
+                            ReservaRepository reservas, RegistroAuditoriaRepository auditoria, Clock clock) {
         this.usuarios = usuarios;
         this.salas = salas;
         this.ocupacoes = ocupacoes;
         this.reservas = reservas;
+        this.auditoria = auditoria;
         this.clock = clock;
     }
 
@@ -62,6 +66,8 @@ public class CriarReservaSala {
         garantirHorarioLivre(sala, periodo);
 
         var reserva = gravar(Reserva.solicitar(solicitante, sala, periodo, comando.finalidade(), clock.instant()), sala);
+        // RC08: na mesma transação da reserva. Se a auditoria falhar, a reserva também é desfeita.
+        reserva.retirarMudancas().forEach(m -> auditoria.save(RegistroAuditoria.daReserva(reserva.getId(), m)));
         return new ReservaCriada(reserva.getId(), sala.getId(), periodo.inicio(), periodo.fim(),
                 reserva.getFinalidade(), reserva.getStatus());
     }

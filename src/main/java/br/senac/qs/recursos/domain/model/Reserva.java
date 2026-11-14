@@ -35,6 +35,8 @@ import jakarta.persistence.Version;
 @Table(name = "reserva")
 public class Reserva {
 
+    static final String MOTIVO_APROVACAO_AUTOMATICA = "Nenhum recurso é restrito: aprovação automática.";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -87,8 +89,19 @@ public class Reserva {
         reserva.criadoEm = agora;
         reserva.atualizadoEm = agora;
         reserva.ocupacoes.add(new Ocupacao(reserva, recurso, periodo));
-        reserva.registrar(null, StatusReserva.SOLICITADA, solicitante, null, agora);
+        reserva.registrar(null, StatusReserva.SOLICITADA, solicitante.getId(), solicitante.getEmail(), null, agora);
+        if (!recurso.isRestrito()) {
+            reserva.aprovarAutomaticamente(agora);
+        }
         return reserva;
+    }
+
+    /** D1: sem recurso restrito, não há quem precise aprovar; o sistema aprova e isso fica auditado. */
+    private void aprovarAutomaticamente(Instant agora) {
+        var anterior = status;
+        this.status = APROVADA;
+        this.motivoStatus = MOTIVO_APROVACAO_AUTOMATICA;
+        registrar(anterior, APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA, MOTIVO_APROVACAO_AUTOMATICA, agora);
     }
 
     public void aprovar(Usuario responsavel, Instant agora) {
@@ -180,11 +193,12 @@ public class Reserva {
         if (novo.liberaHorario()) {
             ocupacoes.forEach(Ocupacao::liberar);
         }
-        registrar(anterior, novo, autor, motivo, agora);
+        registrar(anterior, novo, autor.getId(), autor.getEmail(), motivo, agora);
     }
 
-    private void registrar(StatusReserva anterior, StatusReserva novo, Usuario autor, String motivo, Instant agora) {
-        mudancasPendentes.add(new MudancaDeEstado(anterior, novo, autor.getId(), autor.getEmail(), motivo, agora));
+    private void registrar(StatusReserva anterior, StatusReserva novo, Long autorId, String autorEmail,
+                           String motivo, Instant agora) {
+        mudancasPendentes.add(new MudancaDeEstado(anterior, novo, autorId, autorEmail, motivo, agora));
     }
 
     public Long getId() {
