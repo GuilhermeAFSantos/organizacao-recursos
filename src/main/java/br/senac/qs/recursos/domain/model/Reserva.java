@@ -36,6 +36,8 @@ import jakarta.persistence.Version;
 @Table(name = "reserva")
 public class Reserva {
 
+    static final String MOTIVO_APROVACAO_AUTOMATICA = "Nenhum recurso é restrito: aprovação automática.";
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -108,9 +110,7 @@ public class Reserva {
         reserva.atualizadoEm = agora;
         recursos.forEach(recurso -> reserva.ocupacoes.add(new Ocupacao(reserva, recurso, periodo)));
         reserva.registrar(null, StatusReserva.SOLICITADA, solicitante.getId(), solicitante.getEmail(), null, agora);
-        reserva.status = APROVADA;
-        reserva.registrar(SOLICITADA, APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA,
-                "Nenhum recurso é restrito: aprovação automática.", agora);
+        reserva.aprovarAutomaticamente(agora);
         return reserva;
     }
 
@@ -150,6 +150,13 @@ public class Reserva {
         if (!agora.isBefore(novo.inicio())) {
             throw new RegraNegocioException("O novo horário deve começar no futuro.");
         }
+    }
+
+    /** D1: sem recurso restrito, não há quem precise aprovar; o sistema aprova e isso fica auditado. */
+    private void aprovarAutomaticamente(Instant agora) {
+        this.status = APROVADA;
+        this.motivoStatus = MOTIVO_APROVACAO_AUTOMATICA;
+        registrar(SOLICITADA, APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA, MOTIVO_APROVACAO_AUTOMATICA, agora);
     }
 
     /** O recurso faz parte desta reserva? Compara por id: o recurso da ocupação pode ser um proxy. */

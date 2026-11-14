@@ -1,6 +1,7 @@
 package br.senac.qs.recursos.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.time.Instant;
 import java.util.List;
@@ -32,7 +33,7 @@ class RegraAprovacaoTest {
         assertThat(reserva.getAprovador()).isNull();
         assertThat(reserva.retirarMudancas()).extracting(MudancaDeEstado::novo, MudancaDeEstado::autorEmail)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(StatusReserva.SOLICITADA, "ana@senac.br"),
-                        org.assertj.core.groups.Tuple.tuple(StatusReserva.APROVADA, MudancaDeEstado.AUTOR_SISTEMA));
+                        tuple(StatusReserva.SOLICITADA, "ana@senac.br"),
+                        tuple(StatusReserva.APROVADA, MudancaDeEstado.AUTOR_SISTEMA));
     }
 }
