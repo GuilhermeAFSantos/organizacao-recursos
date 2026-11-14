@@ -274,6 +274,10 @@ public class Reserva {
         return id;
     }
 
+    public Usuario getSolicitante() {
+        return solicitante;
+    }
+
     public PeriodoReserva getPeriodo() {
         return periodo;
     }
