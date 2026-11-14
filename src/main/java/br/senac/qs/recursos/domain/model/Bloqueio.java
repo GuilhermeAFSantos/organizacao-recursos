@@ -74,12 +74,17 @@ public class Bloqueio {
      * minuto cheio (Q3); antes de começar, o bloqueio inteiro é desfeito.
      */
     public void encerrar(Usuario administrador, Instant agora) {
-        var truncado = agora.truncatedTo(ChronoUnit.MINUTES);
-        var novoFim = truncado.equals(agora) ? truncado : truncado.plus(1, ChronoUnit.MINUTES);
+        var novoFim = proximoMinutoCheio(agora);
         periodo = new PeriodoReserva(periodo.inicio(), novoFim);
         for (Ocupacao ocupacao : ocupacoes) {
             ocupacao.encurtarAte(novoFim);
         }
+    }
+
+    /** 10:37:42 → 10:38:00; 10:37:00 → 10:37:00. Mantém os períodos em minutos cheios (Q3). */
+    private static Instant proximoMinutoCheio(Instant instante) {
+        var truncado = instante.truncatedTo(ChronoUnit.MINUTES);
+        return truncado.equals(instante) ? truncado : truncado.plus(1, ChronoUnit.MINUTES);
     }
 
     private static void exigirAdministrador(Usuario usuario) {
