@@ -32,7 +32,17 @@ public record PeriodoReserva(Instant inicio, Instant fim) {
         }
     }
 
+    /**
+     * RC02: dois períodos se sobrepõem quando cada um começa <b>antes</b> do outro terminar.
+     *
+     * <p>Os intervalos são <b>semiabertos</b>, {@code [inicio, fim)}: o instante final não faz parte
+     * do período. Por isso, períodos que apenas se tocam (08h–10h e 10h–12h) NÃO se sobrepõem.
+     *
+     * <p>É a mesma semântica do operador {@code &&} sobre {@code tstzrange(inicio, fim, '[)')} usado
+     * na constraint de exclusão do banco (V1). Aplicação e banco precisam concordar; caso
+     * contrário a aplicação aceitaria o que o banco recusa, ou o contrário.
+     */
     public boolean sobrepoe(PeriodoReserva outro) {
-        return inicio.isBefore(outro.fim) && outro.inicio.isBefore(fim);
+        return this.inicio.isBefore(outro.fim) && outro.inicio.isBefore(this.fim);
     }
 }
