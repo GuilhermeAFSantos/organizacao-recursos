@@ -116,8 +116,10 @@ inclusive falsos positivos. Descartado.
 
 **Escolha: defesa em camadas** (revisada na Etapa 3; ver 3.1).
 
-1. **Lock pessimista no recurso:** `SELECT … FOR NO KEY UPDATE` na linha da sala **antes** da
-   pré-checagem. Serializa as reservas do mesmo recurso.
+1. **Lock pessimista no recurso:** `SELECT … FOR NO KEY UPDATE` na linha de `recurso` **antes** da
+   pré-checagem, por uma consulta nativa única (`RecursoRepository.travar`). **Reservas e bloqueios
+   travam a mesma linha**, então reserva × reserva e reserva × manutenção simultâneas são
+   serializadas (cenários RC03 e MN-09).
 2. **Aplicação:** valida a RC01 e consulta conflitos antes de gravar. Gera uma mensagem útil e
    registra o conflito evitado com origem `APLICACAO`. Com o lock, a consulta é confiável também
    sob concorrência.
@@ -176,6 +178,16 @@ Perguntas registradas em [docs/testes/bdd-aprovacao-bloqueio.md](testes/bdd-apro
 | Q7 | Até quando cancelar uma reserva APROVADA? | Só **antes do início**. Depois do início sem uso, o RESPONSAVEL registra NAO_COMPARECEU. |
 | Q8 | Aprovar depois do início? | Não: aprovar só antes do início. Uma solicitação ainda pendente pode ser rejeitada ou cancelada a qualquer momento. |
 | Q4, Q6 | Início de uso antecipado? Conclusão antes do fim? | **Em aberto.** Por ora valem só as transições da máquina de estados, sem regra de horário. |
+
+### Decisões da fatia de manutenção e bloqueios (Fase 2)
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| Q1 | Reserva que termina exatamente no início de uma manutenção (ou começa no fim) é aceita? | **Sim.** Mesma regra semiaberta `[início, fim)` das reservas entre si; nenhuma mudança no schema. |
+| Q3 | Granularidade dos horários? | **Minutos cheios.** Segundos ou frações ≠ 0 são recusados com 400 (`@MinutoCheio` na entrada da API). |
+| Q9 | Bloqueio ADMINISTRATIVO segue as regras da manutenção? | **Sim.** O tipo só muda a mensagem ("em manutenção" × "bloqueada") e os relatórios. |
+| Q10 | Manutenção pode ser encerrada antes do fim? | **Sim, pelo ADMINISTRADOR**, com auditoria. Antes de começar, o bloqueio é desfeito; durante, termina no **próximo minuto cheio** (coerente com a Q3); depois do fim, recusado. |
+| D3 | Bloqueio sobre reservas ativas | Recusado com 409 e a lista `reservasEmConflito` no ProblemDetail; o ADMINISTRADOR decide o que cancelar. |
 
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a

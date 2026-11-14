@@ -29,15 +29,16 @@ ArchUnit · JaCoCo · SonarCloud · GitHub Actions.
 
 | Métrica | Meta | Atual |
 |---|---|---|
-| Cobertura de linhas (JaCoCo) | ≥ 80% | **98,7%** |
-| Cobertura de branches (JaCoCo) | ≥ 70% | **96,6%** |
+| Cobertura de linhas (JaCoCo) | ≥ 80% | **98,0%** |
+| Cobertura de branches (JaCoCo) | ≥ 70% | **95,0%** |
 | Bugs / vulnerabilidades (SonarCloud) | 0 | **0 / 0** |
 | Requisitos críticos (RC) na RTM | 100% | **100%** (8 de 8 rastreados) |
 
 Funcionalidades prontas: autenticação JWT (validação de token e perfis); criação de reserva de sala
 com as regras RC01, RC02 e RC03; aprovação automática de recurso não restrito; aprovação, rejeição,
 cancelamento, início de uso, não comparecimento e conclusão com a máquina de estados (RC05, RC06,
-RC07) e auditoria de cada mudança (RC08); garantia no banco para RC04; tratamento de erros em
+RC07) e auditoria de cada mudança (RC08); manutenção e bloqueios com encerramento antecipado (RF08,
+RC04); horários em minutos cheios; tratamento de erros em
 ProblemDetail e Swagger. O restante está na [RTM](RTM.md), com status por requisito.
 
 ## Como rodar localmente
@@ -90,11 +91,11 @@ não existe (RF01 parcial, ver RTM); até lá, os testes geram tokens assinados 
 
 | Tipo | Classes | O que provam |
 |---|---|---|
-| Unidade | `PeriodoReservaTest`, `StatusReservaTest`, `ReservaTest`, `CriarReservaSalaTest`, `JwtPropertiesTest`, `TipoProblemaTest` | Regras puras (RC01, RC02, matriz de 49 transições, perfis, horários, auditoria), tradução de erros do banco, configuração |
+| Unidade | `PeriodoReservaTest`, `StatusReservaTest`, `ReservaTest`, `BloqueioTest`, `MinutoCheioValidatorTest`, `CriarReservaSalaTest`, `JwtPropertiesTest`, `TipoProblemaTest` | Regras puras (RC01, RC02, matriz de 49 transições, perfis, horários, auditoria), tradução de erros do banco, configuração |
 | Web (MockMvc) | `GlobalExceptionHandlerTest` | Contrato de erros ProblemDetail, sem vazar detalhes internos |
 | Arquitetura | `ArquiteturaTest` (ArchUnit) | Dependências entre camadas |
 | Integração (banco) | `EsquemaBancoIT` | Constraints e triggers do schema no PostgreSQL real |
-| API (caixa-preta) | `CriarReservaSalaIT`, `TransicoesReservaIT`, `AplicacaoIT` | HTTP + JWT + banco reais, ponta a ponta, incluindo aprovar × cancelar simultâneos |
+| API (caixa-preta) | `CriarReservaSalaIT`, `TransicoesReservaIT`, `BloqueiosIT`, `AplicacaoIT` | HTTP + JWT + banco reais, ponta a ponta, incluindo aprovar × cancelar e reserva × manutenção simultâneos |
 | Concorrência | `ReservaConcorrenciaIT` | RC03: 20 requisições simultâneas × 10 rodadas → exatamente 1 reserva |
 
 ## Estrutura
