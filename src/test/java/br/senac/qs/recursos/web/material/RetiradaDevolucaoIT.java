@@ -136,7 +136,7 @@ class RetiradaDevolucaoIT {
         @Test
         @DisplayName("retirado de reserva que já terminou aparece como atrasado")
         void pendenciaAtrasada() {
-            long reserva = reservar(HA_30_DIAS, projetor);
+            long reserva = cenario.criarReservaAprovadaNoPassado(emailAna, projetor, HA_30_DIAS);
             retirar(rita, reserva, projetor);
 
             assertThat(pendencias()).filteredOn(p -> p.get("materialId").asLong() == projetor).singleElement()

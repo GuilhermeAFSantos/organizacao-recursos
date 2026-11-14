@@ -204,8 +204,7 @@ class AlteracaoHorarioIT {
         @Test
         @DisplayName("reserva que já começou → 422")
         void jaComecou() {
-            long reserva = idDe(http.postForEntity("/api/reservas", new HttpEntity<>(corpoReserva(sala, null,
-                    HA_30_DIAS, "10:00", "12:00"), cabecalhos(ana)), JsonNode.class));
+            long reserva = cenario.criarReservaAprovadaNoPassado(emailAna, sala, HA_30_DIAS);
 
             var resposta = alterar(ana, reserva, "14:00", "16:00");
 

@@ -58,6 +58,7 @@ class RelatorioUtilizacaoIT {
     JdbcTemplate jdbc;
 
     CenarioBanco cenario;
+    String emailAna;
     String ana;
     String bruno;
     String rita;
@@ -66,7 +67,8 @@ class RelatorioUtilizacaoIT {
     @BeforeEach
     void prepararCenario() {
         cenario = new CenarioBanco(jdbc);
-        ana = token("SOLICITANTE");
+        emailAna = cenario.criarUsuario("SOLICITANTE");
+        ana = GeradorTokenTeste.token(jwtEncoder, emailAna, "SOLICITANTE");
         bruno = token("SOLICITANTE");
         rita = token("RESPONSAVEL");
         adm = token("ADMINISTRADOR");
@@ -134,7 +136,7 @@ class RelatorioUtilizacaoIT {
     void naoComparecimento() {
         LocalDate dia = PASSADO;
         long sala = cenario.criarSala(false);
-        long reserva = reservar(ana, dia, sala, null, "10:00", "12:00");
+        long reserva = cenario.criarReservaAprovadaNoPassado(emailAna, sala, dia);
         acao(rita, reserva, "nao-comparecimento");
 
         var corpo = relatorio(adm, dia, dia).getBody();

@@ -77,6 +77,16 @@ public class CenarioBanco {
         return reserva;
     }
 
+    /**
+     * Reserva APROVADA das 10:00 às 12:00 (Brasília) num dia já passado. A API recusa criar no
+     * passado (Q12); testes de não comparecimento, atraso e alteração tardia precisam dela.
+     */
+    public long criarReservaAprovadaNoPassado(String emailSolicitante, long recursoId, java.time.LocalDate dia) {
+        var brasilia = java.time.ZoneId.of("America/Sao_Paulo");
+        return criarReservaNoEstado(emailSolicitante, recursoId, dia.atTime(10, 0).atZone(brasilia).toOffsetDateTime(),
+                dia.atTime(12, 0).atZone(brasilia).toOffsetDateTime(), "APROVADA");
+    }
+
     public int contarReservas(long salaId) {
         return jdbc.queryForObject("""
                 SELECT count(DISTINCT reserva_id) FROM ocupacao WHERE recurso_id = ? AND reserva_id IS NOT NULL""",

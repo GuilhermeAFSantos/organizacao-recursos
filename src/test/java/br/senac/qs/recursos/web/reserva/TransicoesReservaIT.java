@@ -64,6 +64,7 @@ class TransicoesReservaIT {
     JdbcTemplate jdbc;
 
     CenarioBanco cenario;
+    String emailAna;
     String ana;
     String bruno;
     String rita;
@@ -73,7 +74,8 @@ class TransicoesReservaIT {
     @BeforeEach
     void prepararCenario() {
         cenario = new CenarioBanco(jdbc);
-        ana = token(cenario.criarUsuario("SOLICITANTE"), "SOLICITANTE");
+        emailAna = cenario.criarUsuario("SOLICITANTE");
+        ana = token(emailAna, "SOLICITANTE");
         bruno = token(cenario.criarUsuario("SOLICITANTE"), "SOLICITANTE");
         rita = token(cenario.criarUsuario("RESPONSAVEL"), "RESPONSAVEL");
         adm = token(cenario.criarUsuario("ADMINISTRADOR"), "ADMINISTRADOR");
@@ -209,7 +211,8 @@ class TransicoesReservaIT {
         @DisplayName("Q5: não comparecimento registrado depois do início libera o horário")
         void naoComparecimento() {
             long salaComum = cenario.criarSala(false);
-            long reserva = solicitar(ana, salaComum, HA_30_DIAS); // aprovada automaticamente
+            // No passado só pelo banco: a API não cria reserva que já começou (Q12).
+            long reserva = cenario.criarReservaAprovadaNoPassado(emailAna, salaComum, HA_30_DIAS);
 
             var resposta = acao(rita, reserva, "nao-comparecimento", "Ninguém compareceu");
 
