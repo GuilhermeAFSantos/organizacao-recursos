@@ -1,7 +1,7 @@
 package br.senac.qs.recursos.web.reserva;
 
-import br.senac.qs.recursos.application.reserva.CriarReservaSala;
-import br.senac.qs.recursos.application.reserva.CriarReservaSalaComando;
+import br.senac.qs.recursos.application.reserva.CriarReserva;
+import br.senac.qs.recursos.application.reserva.CriarReservaComando;
 import br.senac.qs.recursos.application.reserva.TransicionarReserva;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -26,11 +26,11 @@ public class ReservaController {
 
     private static final String RESPONSAVEL = "hasRole('RESPONSAVEL')";
 
-    private final CriarReservaSala criarReservaSala;
+    private final CriarReserva criarReserva;
     private final TransicionarReserva transicionar;
 
-    public ReservaController(CriarReservaSala criarReservaSala, TransicionarReserva transicionar) {
-        this.criarReservaSala = criarReservaSala;
+    public ReservaController(CriarReserva criarReserva, TransicionarReserva transicionar) {
+        this.criarReserva = criarReserva;
         this.transicionar = transicionar;
     }
 
@@ -39,9 +39,10 @@ public class ReservaController {
     @ResponseStatus(HttpStatus.CREATED)
     public ReservaResponse criar(@Valid @RequestBody CriarReservaRequest requisicao,
                                  @AuthenticationPrincipal Jwt jwt) {
-        var comando = new CriarReservaSalaComando(jwt.getSubject(), requisicao.salaId(),
-                requisicao.inicio().toInstant(), requisicao.fim().toInstant(), requisicao.finalidade());
-        return ReservaResponse.de(criarReservaSala.executar(comando));
+        var comando = new CriarReservaComando(jwt.getSubject(), requisicao.salaId(), requisicao.professorId(),
+                requisicao.materiaisIds(), requisicao.inicio().toInstant(), requisicao.fim().toInstant(),
+                requisicao.finalidade());
+        return ReservaResponse.de(criarReserva.executar(comando));
     }
 
     @PostMapping("/{id}/aprovacao")
