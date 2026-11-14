@@ -7,6 +7,11 @@ public class SenhaForteValidator implements ConstraintValidator<SenhaForte, Stri
 
     @Override
     public boolean isValid(String senha, ConstraintValidatorContext contexto) {
-        return true;
+        if (senha == null) {
+            return true;
+        }
+        return senha.length() >= SenhaForte.TAMANHO_MINIMO
+                && senha.chars().anyMatch(Character::isLetter)
+                && senha.chars().anyMatch(Character::isDigit);
     }
 }
