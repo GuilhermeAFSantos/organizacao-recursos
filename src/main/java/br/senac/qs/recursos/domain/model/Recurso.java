@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 @Entity
 @Table(name = "recurso")
@@ -26,6 +27,10 @@ public abstract class Recurso {
 
     private boolean ativo;
 
+    /** Lock otimista: duas alterações simultâneas do mesmo cadastro não se sobrescrevem em silêncio. */
+    @Version
+    private long version;
+
     protected Recurso() {
     }
 
@@ -33,6 +38,16 @@ public abstract class Recurso {
         this.nome = nome;
         this.restrito = restrito;
         this.ativo = true;
+    }
+
+    public abstract TipoRecurso getTipo();
+
+    public void desativar(Usuario autor) {
+        throw new UnsupportedOperationException("a implementar");
+    }
+
+    public void reativar(Usuario autor) {
+        throw new UnsupportedOperationException("a implementar");
     }
 
     public Long getId() {
