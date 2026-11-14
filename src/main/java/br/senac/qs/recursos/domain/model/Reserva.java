@@ -10,7 +10,6 @@ import static br.senac.qs.recursos.domain.model.StatusReserva.REJEITADA;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
 import br.senac.qs.recursos.domain.exception.RegraNegocioException;
@@ -168,12 +167,8 @@ public class Reserva {
 
     private void exigirTransicaoPara(StatusReserva destino) {
         if (!status.podeIrPara(destino)) {
-            String opcoes = status.destinos().isEmpty()
-                    ? status + " é um estado final."
-                    : "A partir de " + status + ", as opções são: " + status.destinos().stream()
-                            .sorted().map(Enum::name).collect(Collectors.joining(", ")) + ".";
-            throw new TransicaoInvalidaException(
-                    "Não é possível mudar a reserva de " + status + " para " + destino + ". " + opcoes);
+            throw new TransicaoInvalidaException("Não é possível mudar a reserva de " + status + " para "
+                    + destino + ". " + status.descreverOpcoes());
         }
     }
 

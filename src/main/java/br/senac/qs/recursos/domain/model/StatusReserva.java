@@ -1,6 +1,7 @@
 package br.senac.qs.recursos.domain.model;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Estados da reserva e a máquina de transições (RC05).
@@ -30,6 +31,15 @@ public enum StatusReserva {
 
     public boolean podeIrPara(StatusReserva destino) {
         return destinos().contains(destino);
+    }
+
+    /** Texto para o usuário com as saídas possíveis a partir deste estado. */
+    public String descreverOpcoes() {
+        if (destinos().isEmpty()) {
+            return this + " é um estado final.";
+        }
+        return "A partir de " + this + ", as opções são: "
+                + destinos().stream().sorted().map(Enum::name).collect(Collectors.joining(", ")) + ".";
     }
 
     /** Estados em que a reserva deixa de ocupar o horário, que fica livre para outra reserva. */
