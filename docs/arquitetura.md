@@ -165,6 +165,23 @@ A extensão `btree_gist` permite combinar `=` em `BIGINT` com `&&` em `tstzrange
 | 8 | Perfis por usuário | Um perfil por usuário. |
 | 9 | Integração externa (RF11) | `POST /notificacoes` genérico, enviado **após o commit**. Uma falha gera log e não desfaz a reserva. WireMock nos testes. |
 
+### Decisões da fatia de aprovação e estados (Fase 2)
+
+Perguntas registradas em [docs/testes/bdd-aprovacao-bloqueio.md](testes/bdd-aprovacao-bloqueio.md#perguntas-em-aberto).
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| Q2 | Quem cria reservas? | Só o SOLICITANTE (os outros perfis recebem 403). A proibição de autoaprovação continua no domínio como defesa extra. |
+| Q5 | Quando registrar NAO_COMPARECEU? | A partir do horário de início, sem tolerância fixa. |
+| Q7 | Até quando cancelar uma reserva APROVADA? | Só **antes do início**. Depois do início sem uso, o RESPONSAVEL registra NAO_COMPARECEU. |
+| Q8 | Aprovar depois do início? | Não: aprovar só antes do início. Uma solicitação ainda pendente pode ser rejeitada ou cancelada a qualquer momento. |
+| Q4, Q6 | Início de uso antecipado? Conclusão antes do fim? | **Em aberto.** Por ora valem só as transições da máquina de estados, sem regra de horário. |
+
+Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
+→ **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
+mudança para a auditoria). A verificação de permissão vem primeiro para não revelar o estado da
+reserva a quem não pode agir sobre ela.
+
 ## 5. Riscos
 
 | Risco | Tipo | Mitigação |
