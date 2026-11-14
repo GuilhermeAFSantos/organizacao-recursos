@@ -28,6 +28,7 @@ public enum TipoProblema {
     EDICAO_CONCORRENTE("edicao-concorrente", HttpStatus.CONFLICT, "Edição concorrente"),
     VIOLACAO_INTEGRIDADE("violacao-integridade", HttpStatus.CONFLICT, "Violação de integridade"),
     REGRA_NEGOCIO("regra-negocio", HttpStatus.UNPROCESSABLE_ENTITY, "Regra de negócio violada"),
+    MUITAS_TENTATIVAS("muitas-tentativas", HttpStatus.TOO_MANY_REQUESTS, "Muitas tentativas"),
     ERRO_INTERNO("erro-interno", HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno");
 
     public static final String PREFIXO_TIPO = "/problemas/";

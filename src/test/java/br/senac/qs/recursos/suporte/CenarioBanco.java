@@ -3,6 +3,7 @@ package br.senac.qs.recursos.suporte;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 /**
  * Monta dados de teste direto no banco (fora da API sob teste).
@@ -25,6 +26,18 @@ public class CenarioBanco {
         jdbc.update("INSERT INTO usuario (nome, email, senha_hash, perfil) VALUES (?, ?, 'nao-usado', ?)",
                 "Usuário de teste", email, perfil);
         return email;
+    }
+
+    /** Cria um usuário ativo com senha de verdade (hash BCrypt), para testes de login. */
+    public String criarUsuarioComSenha(String perfil, String senha) {
+        String email = perfil.toLowerCase() + "-" + UUID.randomUUID() + "@senac.br";
+        jdbc.update("INSERT INTO usuario (nome, email, senha_hash, perfil) VALUES (?, ?, ?, ?)",
+                "Usuário de teste", email, new BCryptPasswordEncoder().encode(senha), perfil);
+        return email;
+    }
+
+    public void desativarUsuario(String email) {
+        jdbc.update("UPDATE usuario SET ativo = false WHERE email = ?", email);
     }
 
     public long criarSala() {

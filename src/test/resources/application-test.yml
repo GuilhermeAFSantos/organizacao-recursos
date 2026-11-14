@@ -4,6 +4,10 @@
 app:
   jwt:
     segredo: segredo-exclusivo-para-testes-automatizados-0123456789abcdef
+  # Primeiro ADMINISTRADOR criado na inicialização (só para testes; em dev/produção vem do .env).
+  admin:
+    email: admin@teste.local
+    senha: Admin2026teste
 
 logging:
   level:

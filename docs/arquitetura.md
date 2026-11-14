@@ -189,6 +189,20 @@ Perguntas registradas em [docs/testes/bdd-aprovacao-bloqueio.md](testes/bdd-apro
 | Q10 | Manutenção pode ser encerrada antes do fim? | **Sim, pelo ADMINISTRADOR**, com auditoria. Antes de começar, o bloqueio é desfeito; durante, termina no **próximo minuto cheio** (coerente com a Q3); depois do fim, recusado. |
 | D3 | Bloqueio sobre reservas ativas | Recusado com 409 e a lista `reservasEmConflito` no ProblemDetail; o ADMINISTRADOR decide o que cancelar. |
 
+### Decisões da fatia de login e usuários (Fase 2)
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Primeiro administrador | Criado na inicialização com `ADMIN_EMAIL`/`ADMIN_SENHA` do `.env`, se não houver nenhum ADMINISTRADOR ativo. Senha fraca ou e-mail em uso **impedem a subida**. | Nenhuma senha no código (SonarCloud S6437); falhar no deploy é melhor que subir sem administrador. |
+| Política de senha | Mínimo 8 caracteres, com letra e número. Regra única em `PoliticaSenha` (domínio), usada pela API (`@SenhaForte`) e pela inicialização. | Fácil de explicar e testar nas fronteiras (7 × 8 caracteres). |
+| Força bruta | 5 senhas erradas seguidas bloqueiam por 15 min (HTTP 429). Contador e desbloqueio gravados no usuário (migration V3). | Vale com várias instâncias e sobrevive a reinícios. |
+| Mensagem de falha | **Sempre** "E-mail ou senha inválidos." (401), para e-mail inexistente, senha errada ou usuário inativo. | Não revelar quais e-mails existem. |
+| Tempo de resposta | Sem usuário, a senha é comparada com um hash fictício. | O BCrypt é lento de propósito; sem isso, a resposta mais rápida denunciaria e-mails inexistentes (*timing attack*). |
+| Falha gravada | `@Transactional(noRollbackFor = …)` no login. | Sem isso, a exceção desfaria o incremento do contador e o bloqueio nunca aconteceria. |
+| Token | JWT HS256, `sub` = e-mail, claim `perfil`, validade `app.jwt.expiracao` (2 h). Emitido por uma porta (`EmissorDeToken`) implementada na infraestrutura. | O caso de uso não conhece o formato do token. |
+| Gestão de usuários | Só ADMINISTRADOR cadastra, lista, desativa e redefine senha; ninguém desativa a si mesmo; e-mail normalizado e único (409). Cada mudança é auditada sem guardar senha. | Evita ficar sem administrador; RF10. |
+| Troca da própria senha | Qualquer usuário logado, informando a senha atual (422 se não conferir). | Quem roubou só o token não troca a senha. |
+
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
 mudança para a auditoria). A verificação de permissão vem primeiro para não revelar o estado da

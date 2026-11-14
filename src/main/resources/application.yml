@@ -71,5 +71,9 @@ app:
     # Obrigatório (>= 32 bytes). Sem ele a aplicação NÃO sobe (falha rápida e explícita).
     segredo: ${JWT_SECRET:}
     expiracao: PT2H
+  # Primeiro ADMINISTRADOR, criado na inicialização se ainda não houver nenhum (ver .env.exemplo).
+  admin:
+    email: ${ADMIN_EMAIL:}
+    senha: ${ADMIN_SENHA:}
   notificacao:
     url-base: ${NOTIFICACAO_URL:http://localhost:8089}
