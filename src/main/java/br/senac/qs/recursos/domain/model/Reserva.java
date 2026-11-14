@@ -37,6 +37,7 @@ import jakarta.persistence.Version;
 public class Reserva {
 
     static final String MOTIVO_APROVACAO_AUTOMATICA = "Nenhum recurso é restrito: aprovação automática.";
+    static final String MOTIVO_REAPROVACAO = "Horário alterado: a reserva precisa de nova aprovação.";
 
 
     @Id
@@ -129,9 +130,7 @@ public class Reserva {
         ocupacoes.forEach(ocupacao -> ocupacao.moverPara(novo));
         this.atualizadoEm = agora;
         if (status == APROVADA && temRecursoRestrito()) {
-            this.status = SOLICITADA;
-            this.aprovador = null;
-            this.motivoStatus = "Horário alterado: a reserva precisa de nova aprovação.";
+            voltarParaNovaAprovacao();
         }
         var motivo = "Horário alterado de " + periodoAnterior.descrever() + " para " + novo.descrever() + ".";
         mudancasPendentes.add(new MudancaDeEstado(MudancaDeEstado.ALTERACAO, estadoAnterior, status, autor.getId(),
@@ -172,6 +171,13 @@ public class Reserva {
     /** Quem pode mexer na reserva sem ser RESPONSAVEL: quem a solicitou ou um ADMINISTRADOR. */
     private boolean eDonaOuAdministrador(Usuario autor) {
         return autor.mesmaPessoaQue(solicitante) || autor.getPerfil() == Perfil.ADMINISTRADOR;
+    }
+
+    /** Q11: a aprovação valia para o horário antigo; com recurso restrito, alguém precisa aprovar de novo. */
+    private void voltarParaNovaAprovacao() {
+        this.status = SOLICITADA;
+        this.aprovador = null;
+        this.motivoStatus = MOTIVO_REAPROVACAO;
     }
 
     /** O horário reservado já começou (ou passou) neste instante? */
