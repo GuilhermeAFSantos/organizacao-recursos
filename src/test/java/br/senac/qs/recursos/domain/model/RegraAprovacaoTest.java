@@ -24,6 +24,7 @@ class RegraAprovacaoTest {
     final Usuario ana = new Usuario("ana@senac.br", Perfil.SOLICITANTE);
     final Sala sala101 = new Sala("Sala 101", false);
     final Sala laboratorio = new Sala("Laboratório 3", true);
+    final Usuario rita = new Usuario("rita@senac.br", Perfil.RESPONSAVEL);
     final Usuario adm = new Usuario("adm@senac.br", Perfil.ADMINISTRADOR);
     final Professor carlos = Professor.cadastrar(adm, "Prof. Carlos", "P-1", null, java.util.Set.of());
 
@@ -61,5 +62,22 @@ class RegraAprovacaoTest {
 
         assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
         assertThat(reserva.getOcupacoes()).hasSize(2).allSatisfy(o -> assertThat(o.isBloqueante()).isTrue());
+    }
+
+    @Test
+    @DisplayName("AP-04: RESPONSAVEL aprova reserva de recurso restrito: APROVADA, com aprovador e mudança registrada")
+    void responsavelAprovaReservaDeRecursoRestrito() {
+        var reserva = solicitar(laboratorio);
+        reserva.retirarMudancas();
+
+        reserva.aprovar(rita, AGORA);
+
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.APROVADA);
+        assertThat(reserva.getAprovador()).isSameAs(rita);
+        assertThat(reserva.retirarMudancas()).singleElement().satisfies(m -> {
+            assertThat(m.anterior()).isEqualTo(StatusReserva.SOLICITADA);
+            assertThat(m.novo()).isEqualTo(StatusReserva.APROVADA);
+            assertThat(m.autorEmail()).isEqualTo("rita@senac.br");
+        });
     }
 }
