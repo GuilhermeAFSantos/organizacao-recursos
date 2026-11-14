@@ -74,7 +74,7 @@ classDiagram
 | Tabela `ocupacao` (recurso, período, bloqueante), alimentada por Reserva **ou** Bloqueio | RC02, RC03 e RC04 viram a mesma regra no banco. Uma reserva pode juntar sala, professor e materiais e é tudo ou nada. |
 | Intervalo semiaberto `[inicio, fim)` | 08h–10h e 10h–12h **não** conflitam: intervalos que só se tocam são permitidos. |
 | `PeriodoReserva` (value object) | Valida a RC01 no construtor e concentra `sobrepoe()`. É o alvo do TDD. |
-| Única forma de mudar o estado: `Reserva.transitar(novo, usuario, motivo)` | Valida a RC05 e gera o `RegistroAuditoria` (RC08) no mesmo lugar. Não há `setStatus` público. |
+| Única forma de mudar o estado: `Reserva.transitar(novo, usuario, motivo)` | Valida a RC05 e gera o `RegistroAuditoria` (RC08) no mesmo lugar. Não há `setStatus` público. A única exceção é a reaprovação após alteração de horário (APROVADA → SOLICITADA), também auditada. |
 | Datas em `Instant` / `TIMESTAMPTZ` (UTC) | Instante absoluto, sem ambiguidade de fuso. A API recebe ISO-8601 com offset e a interface exibe no horário de São Paulo. |
 | Auditoria e reservas protegidas por trigger | Somente inserção na auditoria (V1); proibido DELETE em reservas (V2, RC07). Vale até contra SQL manual. |
 
@@ -232,6 +232,32 @@ comportamento).
 DTO da web passou a depender dele. O `ArquiteturaTest` reprovou o build antes do commit; o
 critério foi movido para `domain.pesquisa`.
 
+### Decisões da fatia de reserva com vários recursos e alteração de horário (Fase 2)
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Composição da reserva | Sala **obrigatória**; professor e até 10 materiais opcionais, sem repetição, na mesma reserva. | Toda aula acontece num espaço; manter `salaId` também preserva o contrato da API já usado. |
+| Tudo ou nada | Uma ocupação por recurso, na mesma transação. Se qualquer recurso não existe (404), não é reservável (422) ou está ocupado (409), nada é gravado. | Uma aula sem o professor ou sem o projetor não serve. |
+| Aprovação | Automática só se **nenhum** recurso for restrito; basta um (ex.: professor restrito) para exigir RESPONSAVEL. | RC06 aplicada ao conjunto. |
+| Reservável | Recurso ativo; material também não pode estar DANIFICADO (regra no domínio, `Recurso.exigirReservavel`). | A pesquisa já não oferecia material danificado; a reserva agora também recusa. |
+| Ordem de travamento | Os recursos são travados em **ordem crescente de id** (`AgendaDeRecursos`). | Pedidos [A, B] e [B, A] simultâneos travariam um cada e esperariam um pelo outro (deadlock). Testado com materiais em ordens opostas. |
+| Mensagem de conflito | Diz qual recurso e por quê, no gênero certo: "O professor X já está ocupado…", "O material Projetor (PAT-1) está em manutenção…". Se o conflito só aparece no banco (23P01) e há vários recursos, a mensagem é genérica. | O banco não diz qual recurso conflitou; melhor genérico do que inventar. |
+| Quem altera o horário | A dona da reserva ou um ADMINISTRADOR (as mesmas regras do cancelamento). | Coerência com Q7. |
+| Quando altera | Só SOLICITADA ou APROVADA, antes do início, e o novo horário precisa começar no futuro. Os recursos continuam os mesmos. | Depois do início, a reserva já está em uso ou perdida; trocar recursos seria outra reserva. |
+| Reaprovação | APROVADA com recurso restrito volta a **SOLICITADA** ao mudar de horário (aprovador apagado, motivo registrado). Sem recurso restrito, continua APROVADA. | A aprovação valia para o horário antigo. É o único caminho que volta um estado, e fica auditado como `ALTERACAO` (fora da matriz de transições). |
+| Própria reserva | A agenda ignora as ocupações da própria reserva: deslocar 10–12 para 11–13 é permitido. | Senão a reserva conflitaria consigo mesma. |
+| Validar antes de consultar | `exigirAlteravel` valida sem mudar nada; só depois a agenda é consultada e a reserva alterada. | A consulta faria o Hibernate gravar antes uma mudança não validada, e a recusa do banco sairia sem mensagem clara. |
+| Alterações simultâneas | O `@Version` da reserva recusa (409 "Edição concorrente") a alteração feita sobre uma versão desatualizada. Testado: nenhum 500 e ocupação nunca dessincronizada da reserva. | Mitiga o risco "início/fim de reserva e ocupação dessincronizados". |
+| Auditoria | Ação `ALTERACAO` com "Horário alterado de 01/12/2026 10:00–12:00 para …" no horário de Brasília. | RC08: o histórico mostra o que mudou, não só que mudou. |
+
+**Ponto em aberto:** a **criação** de reserva ainda aceita horário no passado (os testes de não
+comparecimento usam isso). A alteração já exige horário futuro. Decidir se a criação também deve
+exigir.
+
+**Build:** um build local falhou com "Could not self-attach to current VM" (Mockito se anexando à
+JVM em tempo de execução, intermitente no Windows). O Mockito agora é carregado como `-javaagent`
+nos testes, como ele próprio recomenda para Java 21+.
+
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
 mudança para a auditoria). A verificação de permissão vem primeiro para não revelar o estado da
@@ -244,9 +270,9 @@ reserva a quem não pode agir sobre ela.
 | Prazo (semana 46) | Projeto | Priorizar as RC e a RTM; confirmar a data com o professor |
 | Código gerado com IA e prova oral | Processo | Cada integrante é dono de uma fatia e revisa os PRs dos outros |
 | `23P01` escapar como 500 | Técnico | `saveAndFlush` + teste de API exigindo 409 |
-| **Deadlock `40P01`** entre inserções conflitantes (ocorreu na Etapa 3) | Técnico | Lock do recurso antes da pré-checagem; teste de concorrência com 10 rodadas |
+| **Deadlock `40P01`** entre inserções conflitantes (ocorreu na Etapa 3) | Técnico | Lock do recurso antes da pré-checagem; teste de concorrência com 10 rodadas; com vários recursos, travamento em ordem crescente de id (testado com ordens opostas) |
 | Teste de concorrência instável | Técnico | `CountDownLatch` como portão de largada; N ≥ 10; verificar 1 resposta 201, N−1 respostas 409 e nenhum 500; teste repetido |
-| `inicio`/`fim` de `reserva` e `ocupacao` dessincronizados | Técnico | Atualizar tudo na mesma transação + teste de integração |
+| `inicio`/`fim` de `reserva` e `ocupacao` dessincronizados | Técnico | Atualizados juntos no domínio (`alterarPeriodo`), na mesma transação, com `@Version`; `AlteracaoHorarioIT` › Concorrência verifica no banco |
 | Testes dependem de Docker (Testcontainers) | Técnico | Docker Desktop em todas as máquinas; o runner do CI já tem Docker |
 | Gate de cobertura travar PRs | Técnico | Testar junto com cada funcionalidade |
 | Spring Boot 3.x no fim do suporte gratuito | Técnico | Manter a última versão 3.5.x; a disciplina exige 3.x |
