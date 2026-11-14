@@ -173,7 +173,10 @@ public class Reserva {
     }
 
     public void aprovar(Usuario responsavel, Instant agora) {
-        // Prática de TDD estrito: regra removida, a ser refeita cenário a cenário.
+        this.status = APROVADA;
+        this.aprovador = responsavel;
+        this.atualizadoEm = agora;
+        registrar(SOLICITADA, APROVADA, responsavel.getId(), responsavel.getEmail(), null, agora);
     }
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
