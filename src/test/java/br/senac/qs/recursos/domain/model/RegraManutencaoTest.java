@@ -3,6 +3,7 @@ package br.senac.qs.recursos.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 
@@ -18,6 +19,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 class RegraManutencaoTest {
 
     static final ZoneId BRASILIA = ZoneId.of("America/Sao_Paulo");
+    static final LocalDate DIA = LocalDate.of(2026, 12, 1);
     static final PeriodoReserva MANUTENCAO = periodo("10:00", "12:00");
 
     @ParameterizedTest(name = "{0}: reserva [{1}, {2}) → conflita = {3}")
@@ -45,6 +47,6 @@ class RegraManutencaoTest {
     }
 
     static Instant instante(String hora) {
-        return LocalTime.parse(hora).atDate(java.time.LocalDate.of(2026, 12, 1)).atZone(BRASILIA).toInstant();
+        return LocalTime.parse(hora).atDate(DIA).atZone(BRASILIA).toInstant();
     }
 }
