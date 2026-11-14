@@ -162,6 +162,22 @@ class RegraEstadosTest {
         }
     }
 
+    @ParameterizedTest(name = "{1} por quem não é RESPONSAVEL")
+    @CsvSource({
+        "APROVADA, iniciarUso",
+        "APROVADA, naoCompareceu",
+        "EM_USO,   concluir"
+    })
+    @DisplayName("ES-01 (ator): só o RESPONSAVEL registra início de uso, não comparecimento e conclusão")
+    void soOResponsavelRegistraUsoNaoComparecimentoEConclusao(StatusReserva de, String acao) {
+        var reserva = reservaNoEstado(de);
+
+        assertThatThrownBy(() -> executar(reserva, acao, ana, null, FIM)).isInstanceOf(OperacaoNaoPermitidaException.class)
+                .hasMessageStartingWith("Somente um RESPONSAVEL pode");
+
+        assertThat(reserva.getStatus()).isEqualTo(de);
+    }
+
     /** Leva a reserva ao estado pedido pelos caminhos permitidos e descarta as mudanças até ali. */
     Reserva reservaNoEstado(StatusReserva estado) {
         var reserva = Reserva.solicitar(ana, List.of(laboratorio), new PeriodoReserva(INICIO, FIM), "Aula", ANTES);
