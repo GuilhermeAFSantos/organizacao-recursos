@@ -1,10 +1,12 @@
 package br.senac.qs.recursos.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
 
+import br.senac.qs.recursos.domain.exception.TransicaoInvalidaException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -56,14 +58,49 @@ class RegraEstadosTest {
         assertThat(reserva.getOcupacoes()).allSatisfy(o -> assertThat(o.isBloqueante()).isEqualTo(horario.equals("ocupado")));
     }
 
+    @ParameterizedTest(name = "{0} --{1}--> {2} é recusada")
+    @CsvSource({
+        "SOLICITADA,     iniciarUso, EM_USO",
+        "SOLICITADA,     concluir,   CONCLUIDA",
+        "APROVADA,       aprovar,    APROVADA",
+        "EM_USO,         cancelar,   CANCELADA",
+        "CONCLUIDA,      aprovar,    APROVADA",
+        "REJEITADA,      aprovar,    APROVADA",
+        "CANCELADA,      cancelar,   CANCELADA",
+        "NAO_COMPARECEU, iniciarUso, EM_USO"
+    })
+    @DisplayName("ES-02: transição não permitida é recusada, a reserva fica como estava e nenhuma mudança é registrada")
+    void transicaoNaoPermitidaERecusadaSemRegistrarMudanca(StatusReserva de, String acao, StatusReserva para) {
+        var reserva = reservaNoEstado(de);
+        var autor = acao.equals("cancelar") ? ana : rita;
+
+        assertThatThrownBy(() -> executar(reserva, acao, autor, "motivo", ANTES))
+                .isInstanceOf(TransicaoInvalidaException.class)
+                .hasMessageStartingWith("Não é possível mudar a reserva de " + de + " para " + para + ".");
+
+        assertThat(reserva.getStatus()).isEqualTo(de);
+        assertThat(reserva.retirarMudancas()).isEmpty();
+    }
+
     /** Leva a reserva ao estado pedido pelos caminhos permitidos e descarta as mudanças até ali. */
     Reserva reservaNoEstado(StatusReserva estado) {
         var reserva = Reserva.solicitar(ana, List.of(laboratorio), new PeriodoReserva(INICIO, FIM), "Aula", ANTES);
-        if (estado != StatusReserva.SOLICITADA) {
-            reserva.aprovar(rita, ANTES);
-        }
-        if (estado == StatusReserva.EM_USO) {
-            reserva.iniciarUso(rita, INICIO);
+        switch (estado) {
+            case SOLICITADA -> { }
+            case REJEITADA -> reserva.rejeitar(rita, "sem vaga", ANTES);
+            case CANCELADA -> reserva.cancelar(ana, null, ANTES);
+            default -> {
+                reserva.aprovar(rita, ANTES);
+                switch (estado) {
+                    case EM_USO -> reserva.iniciarUso(rita, INICIO);
+                    case CONCLUIDA -> {
+                        reserva.iniciarUso(rita, INICIO);
+                        reserva.concluir(rita, FIM);
+                    }
+                    case NAO_COMPARECEU -> reserva.registrarNaoComparecimento(rita, null, INICIO);
+                    default -> { }
+                }
+            }
         }
         reserva.retirarMudancas();
         return reserva;
