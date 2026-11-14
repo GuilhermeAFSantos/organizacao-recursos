@@ -121,6 +121,25 @@ class RegraEstadosTest {
         }
     }
 
+    @Test
+    @DisplayName("ES-06: alterar o horário de reserva aprovada com recurso restrito volta a SOLICITADA e exige nova aprovação")
+    void alterarHorarioDeReservaAprovadaComRecursoRestritoExigeNovaAprovacao() {
+        var reserva = reservaNoEstado(StatusReserva.APROVADA);
+        var novo = new PeriodoReserva(INICIO.plusSeconds(6 * 3600), FIM.plusSeconds(6 * 3600));
+
+        reserva.alterarPeriodo(ana, novo, ANTES);
+
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
+        assertThat(reserva.getAprovador()).isNull();
+        assertThat(reserva.retirarMudancas()).singleElement().satisfies(m -> {
+            assertThat(m.acao()).isEqualTo(MudancaDeEstado.ALTERACAO);
+            assertThat(m.anterior()).isEqualTo(StatusReserva.APROVADA);
+            assertThat(m.novo()).isEqualTo(StatusReserva.SOLICITADA);
+        });
+        reserva.aprovar(rita, ANTES);
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.APROVADA);
+    }
+
     /** Leva a reserva ao estado pedido pelos caminhos permitidos e descarta as mudanças até ali. */
     Reserva reservaNoEstado(StatusReserva estado) {
         var reserva = Reserva.solicitar(ana, List.of(laboratorio), new PeriodoReserva(INICIO, FIM), "Aula", ANTES);
