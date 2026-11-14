@@ -21,7 +21,7 @@ Testes citados como `Classe › Grupo` referem-se aos `@Nested`/`@DisplayName` d
 |---|---|---|---|---|
 | Requisitos funcionais (RF) | 14 | 14 | 0 | 0 |
 | Regras críticas (RC) | 8 | 8 | 0 | 0 |
-| Não funcionais e metas (RNF) | 8 | 7 | 0 | 1 |
+| Não funcionais e metas (RNF) | 8 | 8 | 0 | 0 |
 
 Os 8 requisitos críticos estão **todos rastreados e cobertos** por testes (meta: 100%). Os cenários BDD de aprovação, manutenção e estados estão em
 [docs/testes/bdd-aprovacao-bloqueio.md](docs/testes/bdd-aprovacao-bloqueio.md).
@@ -67,6 +67,6 @@ Os 8 requisitos críticos estão **todos rastreados e cobertos** por testes (met
 | **RNF03** Validação de entrada | Dados malformados; *mass assignment* | `GlobalExceptionHandlerTest` › Validação de entrada; `CriarReservaSalaIT` (campos obrigatórios, horário sem fuso, campo `status` proibido); `PesquisaRecursosIT` (filtros da query string inválidos, falha de conversão respondida em português) | Relatórios do CI | ✅ |
 | **RNF04** Tratamento seguro de erros (ProblemDetail, RFC 9457, sem stack trace) | Vazamento de SQL, classes ou segredos | `GlobalExceptionHandlerTest` › Erro inesperado e Persistência | Relatórios do CI | ✅ |
 | **RNF05** Autorização por perfil | Escalada de privilégio | Ver RF01 e RC06 (403 testado por perfil em reservas, transições, bloqueios, usuários, cadastro de recursos e movimentação de materiais) | Ver RF01 | ✅ |
-| **RNF06** Desempenho sob carga (JMeter) | Degradação ou erros com muitos usuários | — | — | ⏳ |
+| **RNF06** Desempenho sob carga (JMeter) | Degradação ou erros com muitos usuários; dupla reserva sob disputa | [`jmeter/carga-reservas.jmx`](jmeter/carga-reservas.jmx) (50 professores reservando + 10 disputando o mesmo horário, 2 min); metas conferidas por [`MetasDeCarga`](src/test/java/br/senac/qs/recursos/carga/MetasDeCarga.java) (testada em `MetasDeCargaTest`); workflow [Teste de carga](.github/workflows/carga.yml) com a aplicação e o PostgreSQL reais | [Resultados](docs/testes/carga-resultados.md): 12.073 requisições, **0 erros**, p95 de 15 a 29 ms (metas: < 500 ms e < 1 s); disputa com 4.032 tentativas → 15 aceitas, 4.017 conflitos evitados, 0 sobreposições no banco; relatório HTML como artefato do CI | ✅ |
 | **RNF07** Arquitetura em camadas respeitada | Regras de negócio acopladas a HTTP ou banco | [`ArquiteturaTest`](src/test/java/br/senac/qs/recursos/ArquiteturaTest.java) (ArchUnit) | Relatórios do CI; a regra barrou o build quando o filtro de pesquisa ficou em `domain.repository` e a camada web passou a depender dele (corrigido antes do commit, ver [`ce2bb11`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/ce2bb11)) | ✅ |
 | **RNF08** Segredos fora do código | Credenciais expostas no repositório | SonarCloud java:S6437; `.env` fora do git | [`76f159f`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/76f159f) | ✅ |

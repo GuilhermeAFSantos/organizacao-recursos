@@ -16,14 +16,15 @@ precisa **demonstrar** qualidade, segurança, rastreabilidade e desempenho com e
 | [docs/arquitetura.md](docs/arquitetura.md) | Camadas, modelo de domínio, estratégia anti-sobreposição, decisões e riscos |
 | [docs/diagrama-contexto.md](docs/diagrama-contexto.md) | Diagrama de contexto do sistema |
 | [docs/sequencia-criar-reserva.md](docs/sequencia-criar-reserva.md) | Sequência da criação de reserva com controle de concorrência |
-| [docs/testes/bdd-aprovacao-bloqueio.md](docs/testes/bdd-aprovacao-bloqueio.md) | Cenários BDD da próxima fatia (aprovação, manutenção, estados) |
+| [docs/testes/bdd-aprovacao-bloqueio.md](docs/testes/bdd-aprovacao-bloqueio.md) | Cenários BDD (aprovação, manutenção, estados) |
+| [docs/testes/carga-resultados.md](docs/testes/carga-resultados.md) | Teste de carga (JMeter): cenário, metas, resultados e como repetir |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Fluxo de trabalho da equipe: branches, PRs, revisão e commits |
 
 ## Stack
 
 Java 21 · Spring Boot 3.5 · Maven · PostgreSQL 17 · Spring Data JPA · Flyway · Spring Security
 (JWT) · Bean Validation · springdoc-openapi · JUnit 5 · Mockito · Testcontainers · WireMock ·
-ArchUnit · Playwright · JaCoCo · SonarCloud · GitHub Actions.
+ArchUnit · Playwright · JMeter · JaCoCo · SonarCloud · GitHub Actions.
 
 ## Situação atual
 
@@ -33,6 +34,7 @@ ArchUnit · Playwright · JaCoCo · SonarCloud · GitHub Actions.
 | Cobertura de branches (JaCoCo) | ≥ 70% | **92,6%** |
 | Bugs / vulnerabilidades (SonarCloud) | 0 | **0 / 0** |
 | Requisitos críticos (RC) na RTM | 100% | **100%** (8 de 8 rastreados) |
+| Teste de carga (JMeter, 60 usuários) | 0 erros; p95 < 500 ms / < 1 s | **0 erros; p95 de 15 a 29 ms** ([resultados](docs/testes/carga-resultados.md)) |
 
 Funcionalidades prontas: login com JWT, bloqueio após 5 senhas erradas e gestão de usuários (RF01);
 cadastro de salas, professores e materiais com desativação (RF02); pesquisa por tipo, capacidade,
@@ -135,3 +137,8 @@ As dependências entre camadas são verificadas no build pelo `ArquiteturaTest`.
 A cada pull request e a cada push na `main`, o [workflow de CI](.github/workflows/ci.yml) roda
 `./mvnw verify` (build, todos os testes, metas de cobertura) e a análise do SonarCloud com espera
 pelo Quality Gate. Os relatórios de teste e cobertura ficam como artefato de cada execução.
+
+A cada mudança de código na `main` (e sob demanda), o [teste de carga](.github/workflows/carga.yml) sobe a
+aplicação empacotada com um PostgreSQL de verdade, roda o JMeter, confere as metas (0 erros, p95) e
+publica o relatório HTML do JMeter como artefato. Para rodar localmente, veja
+[docs/testes/carga-resultados.md](docs/testes/carga-resultados.md#como-repetir).

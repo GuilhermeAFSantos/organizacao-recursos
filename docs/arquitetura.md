@@ -320,6 +320,19 @@ nos testes, como ele próprio recomenda para Java 21+.
 | Teste no navegador | `InterfaceNavegadorIT` (Playwright 1.64, Chromium sem janela a 375px): fluxo reservar → aprovar → ver aprovada, mensagem de erro, HTML injetado não executa, sem rolagem lateral, sem erro de JS nem bloqueio da CSP. O CI instala o Chromium com as bibliotecas do sistema. | O `InterfaceIT` garante contrato e segurança, mas não executa o JavaScript. |
 | Dados ao sair | Ao sair ou com a sessão expirada, a tela **apaga** tudo o que veio da API (não basta esconder). Aprovações listam só de hoje em diante. | Defeito encontrado pelo teste no navegador: num computador compartilhado, o próximo usuário veria no HTML as reservas do anterior. |
 
+### Decisões do teste de carga (Fase 2)
+
+Detalhes, resultados e como repetir: [testes/carga-resultados.md](testes/carga-resultados.md).
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Ferramenta | JMeter 5.6.3 pelo `jmeter-maven-plugin` 3.8.0 (perfil `carga`), plano versionado em `jmeter/`. | Ninguém precisa instalar o JMeter; o teste roda com `./mvnw`, como o resto do projeto. |
+| Alvo | A aplicação empacotada (jar) com PostgreSQL de verdade, já em execução. Fora do `verify`. | Carga contra Testcontainers dentro do build mediria o ambiente de teste, não a aplicação; e deixaria o build lento. |
+| Cenário | 50 professores simultâneos (pesquisar → reservar → listar, com pausas humanas) + 10 disputando a mesma sala em 15 horários. | O início de semestre é o pico realista; a disputa força a RC03 sob carga, que a carga espalhada quase não exercita. |
+| Metas | 0 erros; p95 < 500 ms nas consultas e < 1 s nas reservas. 409 na reserva é sucesso (conflito evitado). | p95 mostra os casos lentos que a média esconde. |
+| Conferência | `MetasDeCarga` (Java, Jackson) lê o `statistics.json` do JMeter e reprova o build; a lógica tem testes de fronteira. | Portável (Windows e Linux, sem `jq`) e a própria régua é testada. |
+| No CI | Workflow `carga.yml` a cada mudança de código na `main` e sob demanda: sobe o PostgreSQL como serviço e o jar, roda o JMeter, confere as metas e publica o relatório HTML. Senhas geradas a cada execução. | Evidência objetiva e repetível, sem segredo fixo no repositório. |
+
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
 mudança para a auditoria). A verificação de permissão vem primeiro para não revelar o estado da
@@ -334,6 +347,7 @@ reserva a quem não pode agir sobre ela.
 | `23P01` escapar como 500 | Técnico | `saveAndFlush` + teste de API exigindo 409 |
 | **Deadlock `40P01`** entre inserções conflitantes (ocorreu na Etapa 3) | Técnico | Lock do recurso antes da pré-checagem; teste de concorrência com 10 rodadas; com vários recursos, travamento em ordem crescente de id (testado com ordens opostas) |
 | Teste de concorrência instável | Técnico | `CountDownLatch` como portão de largada; N ≥ 10; verificar 1 resposta 201, N−1 respostas 409 e nenhum 500; teste repetido |
+| Desempenho sob carga | Técnico | `jmeter/carga-reservas.jmx` no CI com metas de p95 e 0 erros ([resultados](testes/carga-resultados.md)) |
 | `inicio`/`fim` de `reserva` e `ocupacao` dessincronizados | Técnico | Atualizados juntos no domínio (`alterarPeriodo`), na mesma transação, com `@Version`; `AlteracaoHorarioIT` › Concorrência verifica no banco |
 | Testes dependem de Docker (Testcontainers) | Técnico | Docker Desktop em todas as máquinas; o runner do CI já tem Docker |
 | Gate de cobertura travar PRs | Técnico | Testar junto com cada funcionalidade |
