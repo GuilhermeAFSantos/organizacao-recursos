@@ -1,7 +1,7 @@
 # Diagrama de contexto
 
 Quem usa o sistema e com quais sistemas externos ele conversa. Elementos tracejados ainda não
-foram implementados (ver [RTM](../RTM.md)).
+foram implementados (ver [RTM](rtm.md)).
 
 ```mermaid
 flowchart LR
@@ -32,7 +32,7 @@ flowchart LR
 | Elemento | Papel | Situação |
 |---|---|---|
 | Interface web | Telas para os três perfis | Página inicial publicada; telas pendentes (RF13) |
-| API REST | Regras de negócio, autenticação e autorização por perfil | Em desenvolvimento ([RTM](../RTM.md)) |
+| API REST | Regras de negócio, autenticação e autorização por perfil | Em desenvolvimento ([RTM](rtm.md)) |
 | PostgreSQL | Persistência e **última barreira** das regras críticas (RC01, RC02/RC03/RC04 via constraint de exclusão, RC07 e RC08 via triggers) | Pronto (migrations V1 e V2) |
 | Serviço de notificação | Avisar solicitantes sobre aprovação, rejeição e cancelamento. Chamado **depois do commit**: falha na notificação não desfaz a reserva (decisão D9) | Pendente (RF11) |
 

@@ -18,7 +18,7 @@ caminho requisito → cenário → teste → evidência.
 - **Fontes usadas:** o enunciado do projeto (RF01–RF14, RC01–RC08) e as decisões aprovadas em
   [`docs/arquitetura.md`](../arquitetura.md), seção 4 (D1 a D9).
 - **Fontes que não existiam quando os cenários foram escritos:** um PRD (`docs/prd.md`, ainda
-  inexistente) e a RTM, hoje em [`RTM.md`](../../RTM.md). O código de reserva também não existia;
+  inexistente) e a RTM, hoje em [`docs/rtm.md`](../rtm.md). O código de reserva também não existia;
   havia só o schema (migrations V1 e V2).
 - **Regra deste documento:** quando as fontes não decidem um caso, o resultado esperado fica
   **EM ABERTO** e aponta para uma pergunta na seção [Perguntas em aberto](#perguntas-em-aberto).
