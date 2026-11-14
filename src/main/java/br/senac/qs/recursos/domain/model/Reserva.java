@@ -108,6 +108,9 @@ public class Reserva {
         reserva.atualizadoEm = agora;
         recursos.forEach(recurso -> reserva.ocupacoes.add(new Ocupacao(reserva, recurso, periodo)));
         reserva.registrar(null, StatusReserva.SOLICITADA, solicitante.getId(), solicitante.getEmail(), null, agora);
+        reserva.status = APROVADA;
+        reserva.registrar(SOLICITADA, APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA,
+                "Nenhum recurso é restrito: aprovação automática.", agora);
         return reserva;
     }
 
