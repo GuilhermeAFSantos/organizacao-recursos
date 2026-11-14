@@ -1,13 +1,17 @@
 package br.senac.qs.recursos.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.time.Instant;
 import java.util.List;
 
+import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Regras 1 e 2 de docs/testes/bdd-aprovacao-bloqueio.md, refeitas em TDD estrito: um cenário por
@@ -79,5 +83,27 @@ class RegraAprovacaoTest {
             assertThat(m.novo()).isEqualTo(StatusReserva.APROVADA);
             assertThat(m.autorEmail()).isEqualTo("rita@senac.br");
         });
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"aprovar", "rejeitar"})
+    @DisplayName("AU-01: a dona da reserva, com perfil SOLICITANTE, não decide sobre ela e nada muda")
+    void donaComPerfilSolicitanteNaoDecideSobreAPropriaReserva(String acao) {
+        var reserva = solicitar(laboratorio);
+        reserva.retirarMudancas();
+
+        assertThatThrownBy(() -> decidir(reserva, acao, ana)).isInstanceOf(OperacaoNaoPermitidaException.class);
+
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
+        assertThat(reserva.getAprovador()).isNull();
+        assertThat(reserva.retirarMudancas()).isEmpty();
+    }
+
+    static void decidir(Reserva reserva, String acao, Usuario autor) {
+        if (acao.equals("aprovar")) {
+            reserva.aprovar(autor, AGORA);
+        } else {
+            reserva.rejeitar(autor, "Sem vaga", AGORA);
+        }
     }
 }
