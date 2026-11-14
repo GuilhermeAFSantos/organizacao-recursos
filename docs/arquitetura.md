@@ -10,6 +10,7 @@ br.senac.qs.recursos
 ├── domain            regras de negócio; não conhece HTTP
 │   ├── model         entidades, value objects e enums
 │   ├── repository    interfaces Spring Data
+│   ├── pesquisa      critérios de pesquisa (value objects usados pela web e pelos repositórios)
 │   └── exception     exceções com mensagem para o usuário final (pt-BR)
 ├── application       casos de uso (@Transactional) e portas de saída (ex.: NotificadorPort)
 ├── infrastructure    configuração, segurança (JWT) e adaptadores (cliente HTTP de notificação)
@@ -202,6 +203,34 @@ Perguntas registradas em [docs/testes/bdd-aprovacao-bloqueio.md](testes/bdd-apro
 | Token | JWT HS256, `sub` = e-mail, claim `perfil`, validade `app.jwt.expiracao` (2 h). Emitido por uma porta (`EmissorDeToken`) implementada na infraestrutura. | O caso de uso não conhece o formato do token. |
 | Gestão de usuários | Só ADMINISTRADOR cadastra, lista, desativa e redefine senha; ninguém desativa a si mesmo; e-mail normalizado e único (409). Cada mudança é auditada sem guardar senha. | Evita ficar sem administrador; RF10. |
 | Troca da própria senha | Qualquer usuário logado, informando a senha atual (422 se não conferir). | Quem roubou só o token não troca a senha. |
+
+### Decisões da fatia de cadastros e pesquisa (Fase 2)
+
+Tomadas pela equipe técnica (sem regra no enunciado) e registradas aqui para a prova oral.
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Quem cadastra | Só o ADMINISTRADOR cadastra, altera, desativa e reativa. Qualquer usuário logado consulta e pesquisa. | O mesmo perfil que já gerencia usuários e bloqueios. |
+| Sem exclusão | Recurso não é apagado, é **desativado**: some da pesquisa e recusa reservas novas (422, "está desativada"). Reativação permitida. | Reservas antigas apontam para o recurso e não podem ser apagadas (RC07); o histórico fica íntegro. |
+| Desativar com reservas | Recusado (422) enquanto houver reserva SOLICITADA, APROVADA ou EM_USO que ainda não terminou; a mensagem diz quantas. | Desativar em silêncio deixaria quem reservou sem o recurso e sem aviso. Cancelar automaticamente seria uma ação grande demais para um efeito colateral. |
+| Concorrência na desativação | Trava a linha do recurso (`RecursoRepository.travar`), como reservas e bloqueios. | Uma reserva simultânea espera e encontra o recurso inativo, ou termina antes e é contada. |
+| Duplicidade | Nome de sala único sem diferenciar maiúsculas (índice parcial da **V4**); matrícula e patrimônio únicos (V1). Nomes de professor e de material podem repetir. | Duas "Sala 101" confundem quem reserva; dois projetores iguais são normais. A aplicação confere antes (mensagem clara, 409) e o índice garante sob concorrência. |
+| Competências | Texto livre, normalizado (espaços) e comparado sem maiúsculas; reaproveitada entre professores, criada na hora se não existir. | Evita "Java" e "java" como competências diferentes sem exigir um cadastro separado de competências. |
+| Restrito | Informado explicitamente em todo cadastro (`restrito` obrigatório). Alterar não muda reservas já feitas. | Evita um padrão escondido ("professor é restrito?") e efeitos retroativos. |
+| Alteração concorrente | `@Version` em `Recurso` (409 "Edição concorrente"). | Duas alterações simultâneas do mesmo cadastro não se sobrescrevem em silêncio. |
+| Localização | Bloco + andar da sala (andar pode ser negativo: subsolo). Professores e materiais não têm localização. | É o que o schema da V1 já modelava. |
+| Disponibilidade | `inicio` e `fim` juntos (400 caso contrário); livre = nenhuma ocupação bloqueante sobreposta, pela **mesma regra** da constraint (encostar não conflita). Material DANIFICADO não é oferecido. | Pesquisa e reserva não podem discordar sobre o que é "livre". |
+| Formato da pesquisa | `GET /api/recursos` com filtros na query string, combinados com "e"; página própria (`itens`, `pagina`, `tamanho`, `totalItens`, `totalPaginas`), até 100 itens, ordem por nome e id. | O JSON do `Page` do Spring não é estável entre versões; o id desempata nomes iguais entre páginas. |
+| Como a consulta é montada | JPA Criteria (`PesquisaDeRecursos`): cada filtro informado vira uma subconsulta "id está em…". | Parâmetros sempre ligados (sem SQL concatenado, sem injeção) e filtro de sala que nunca afeta professores. |
+| Resposta polimórfica | JSON "plano": campos comuns e, no mesmo nível, só os do tipo (`@JsonUnwrapped`). | O cliente lê `capacidade` direto, sem `if` por tipo de objeto aninhado. |
+
+**Dívida quitada:** a busca "usuário do token existe e está ativo, senão 403" estava copiada em
+quatro casos de uso; agora é o componente `UsuarioDoToken` (commit de refactor sem mudança de
+comportamento).
+
+**Lição do ArchUnit:** na primeira versão, o critério de pesquisa ficou em `domain.repository` e o
+DTO da web passou a depender dele. O `ArquiteturaTest` reprovou o build antes do commit; o
+critério foi movido para `domain.pesquisa`.
 
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
