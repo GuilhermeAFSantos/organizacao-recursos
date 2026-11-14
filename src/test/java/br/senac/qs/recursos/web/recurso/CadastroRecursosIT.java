@@ -189,6 +189,22 @@ class CadastroRecursosIT {
     class Professores {
 
         @Test
+        @DisplayName("Q13/D4: professor é sempre restrito; o campo restrito nem é aceito no cadastro")
+        void sempreRestrito() {
+            var semCampo = professor(unico("P"), List.of());
+            semCampo.remove("restrito");
+            var comCampo = professor(unico("P"), List.of());
+            comCampo.put("restrito", false);
+
+            var criado = enviar(HttpMethod.POST, "/api/professores", adm, semCampo);
+            var recusado = enviar(HttpMethod.POST, "/api/professores", adm, comCampo);
+
+            assertThat(criado.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            assertThat(criado.getBody().get("restrito").asBoolean()).isTrue();
+            assertThat(recusado.getStatusCode()).as("campo desconhecido").isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
         @DisplayName("competências repetidas viram uma só, em ordem alfabética, e são reaproveitadas entre professores")
         void competencias() {
             var java = unico("Java");
@@ -377,7 +393,6 @@ class CadastroRecursosIT {
     static Map<String, Object> professor(String matricula, List<String> competencias) {
         var corpo = new HashMap<String, Object>();
         corpo.put("nome", "Carlos Lima");
-        corpo.put("restrito", true);
         corpo.put("matricula", matricula);
         corpo.put("email", " Carlos@Senac.br ");
         corpo.put("competencias", competencias);

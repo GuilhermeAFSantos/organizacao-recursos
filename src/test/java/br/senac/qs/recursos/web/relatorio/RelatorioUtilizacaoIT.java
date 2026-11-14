@@ -58,6 +58,7 @@ class RelatorioUtilizacaoIT {
     JdbcTemplate jdbc;
 
     CenarioBanco cenario;
+    String emailAna;
     String ana;
     String bruno;
     String rita;
@@ -66,7 +67,8 @@ class RelatorioUtilizacaoIT {
     @BeforeEach
     void prepararCenario() {
         cenario = new CenarioBanco(jdbc);
-        ana = token("SOLICITANTE");
+        emailAna = cenario.criarUsuario("SOLICITANTE");
+        ana = GeradorTokenTeste.token(jwtEncoder, emailAna, "SOLICITANTE");
         bruno = token("SOLICITANTE");
         rita = token("RESPONSAVEL");
         adm = token("ADMINISTRADOR");
@@ -84,7 +86,8 @@ class RelatorioUtilizacaoIT {
         long concluida = reservar(ana, dia, salaA, null, "10:00", "11:30");
         acao(rita, concluida, "inicio-uso");
         acao(rita, concluida, "conclusao");
-        reservar(ana, dia, salaB, professor, "13:00", "15:00");
+        // Com professor, a reserva aguarda aprovação (D4); aprovada, passa a contar como utilização.
+        acao(rita, reservar(ana, dia, salaB, professor, "13:00", "15:00"), "aprovacao");
         long cancelada = reservar(ana, dia, salaA, null, "14:00", "16:00");
         acao(ana, cancelada, "cancelamento");
         reservar(ana, dia, laboratorio, null, "08:00", "09:00");
@@ -133,7 +136,7 @@ class RelatorioUtilizacaoIT {
     void naoComparecimento() {
         LocalDate dia = PASSADO;
         long sala = cenario.criarSala(false);
-        long reserva = reservar(ana, dia, sala, null, "10:00", "12:00");
+        long reserva = cenario.criarReservaAprovadaNoPassado(emailAna, sala, dia);
         acao(rita, reserva, "nao-comparecimento");
 
         var corpo = relatorio(adm, dia, dia).getBody();
@@ -171,7 +174,6 @@ class RelatorioUtilizacaoIT {
     long professor() {
         var corpo = new HashMap<String, Object>();
         corpo.put("nome", "Carlos Lima");
-        corpo.put("restrito", false);
         corpo.put("matricula", UUID.randomUUID().toString().substring(0, 12));
         var resposta = http.postForEntity("/api/professores", new HttpEntity<>(corpo, cabecalhos(adm)), JsonNode.class);
         assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.CREATED);

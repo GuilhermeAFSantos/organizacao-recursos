@@ -81,10 +81,10 @@ class ReservaComVariosRecursosIT {
     class Criacao {
 
         @Test
-        @DisplayName("sala, professor e dois materiais: 201 com todos os recursos; sem restrito, já APROVADA")
+        @DisplayName("sala, professor e dois materiais: 201 com todos os recursos; com professor, aguarda aprovação (D4)")
         void todosOsRecursos() {
             long sala = cenario.criarSala();
-            long professor = professor(false);
+            long professor = professor();
             long projetor = material("BOM");
             long notebook = material("BOM");
 
@@ -96,14 +96,14 @@ class ReservaComVariosRecursosIT {
             assertThat(corpo.get("professorId").asLong()).isEqualTo(professor);
             assertThat(ids(corpo.get("materiaisIds"))).containsExactly(Math.min(projetor, notebook),
                     Math.max(projetor, notebook));
-            assertThat(corpo.get("status").asText()).isEqualTo("APROVADA");
+            assertThat(corpo.get("status").asText()).isEqualTo("SOLICITADA");
             assertThat(contarOcupacoes(corpo.get("id").asLong())).isEqualTo(4);
         }
 
         @Test
-        @DisplayName("professor restrito numa sala comum: a reserva aguarda aprovação")
+        @DisplayName("sala comum + professor: a reserva aguarda aprovação, porque todo professor é restrito (D4)")
         void professorRestrito() {
-            var resposta = reservar(ana, cenario.criarSala(), professor(true), List.of(), "10:00", "12:00");
+            var resposta = reservar(ana, cenario.criarSala(), professor(), List.of(), "10:00", "12:00");
 
             assertThat(resposta.getBody().get("status").asText()).isEqualTo("SOLICITADA");
         }
@@ -126,7 +126,7 @@ class ReservaComVariosRecursosIT {
         @Test
         @DisplayName("professor já alocado em outra sala no mesmo horário: 409 e nada é gravado")
         void professorOcupado() {
-            long professor = professor(false);
+            long professor = professor();
             assertThat(reservar(ana, cenario.criarSala(), professor, List.of(), "10:00", "12:00").getStatusCode())
                     .isEqualTo(HttpStatus.CREATED);
             long outraSala = cenario.criarSala();
@@ -143,7 +143,7 @@ class ReservaComVariosRecursosIT {
         @Test
         @DisplayName("professor em aula que termina quando a outra começa: aceito (intervalos que se tocam)")
         void professorEncostado() {
-            long professor = professor(false);
+            long professor = professor();
             reservar(ana, cenario.criarSala(), professor, List.of(), "08:00", "10:00");
 
             assertThat(reservar(ana, cenario.criarSala(), professor, List.of(), "10:00", "12:00").getStatusCode())
@@ -173,7 +173,7 @@ class ReservaComVariosRecursosIT {
         @DisplayName("material danificado ou professor desativado: 422 explicando o motivo")
         void naoReservaveis() {
             long danificado = material("DANIFICADO");
-            long professor = professor(false);
+            long professor = professor();
             assertThat(http.postForEntity("/api/recursos/" + professor + "/desativacao",
                     new HttpEntity<>(Map.of(), cabecalhos(adm)), JsonNode.class).getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -228,7 +228,7 @@ class ReservaComVariosRecursosIT {
         @RepeatedTest(value = 5, name = "rodada {currentRepetition} de {totalRepetitions}")
         @DisplayName("10 salas diferentes, o mesmo professor, ao mesmo tempo → exatamente 1 aceita, nenhum 500")
         void mesmoProfessor() throws Exception {
-            long professor = professor(false);
+            long professor = professor();
             List<Long> salas = LongStream.range(0, SOLICITACOES).map(i -> cenario.criarSala()).boxed().toList();
             List<Supplier<ResponseEntity<JsonNode>>> pedidos = new ArrayList<>();
             for (long sala : salas) {
@@ -284,10 +284,10 @@ class ReservaComVariosRecursosIT {
         return GeradorTokenTeste.token(jwtEncoder, cenario.criarUsuario(perfil), perfil);
     }
 
-    long professor(boolean restrito) {
+    /** Todo professor é restrito (D4): a reserva que o inclui aguarda aprovação. */
+    long professor() {
         var corpo = new HashMap<String, Object>();
         corpo.put("nome", "Professor");
-        corpo.put("restrito", restrito);
         corpo.put("matricula", UUID.randomUUID().toString().substring(0, 12));
         long id = criar("/api/professores", corpo);
         // nome com o id, para a mensagem de conflito ser verificável sem ambiguidade

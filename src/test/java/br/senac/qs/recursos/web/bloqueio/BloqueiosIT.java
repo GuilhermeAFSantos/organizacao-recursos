@@ -63,6 +63,7 @@ class BloqueiosIT {
     JdbcTemplate jdbc;
 
     CenarioBanco cenario;
+    String emailAna;
     String ana;
     String rita;
     String adm;
@@ -71,7 +72,8 @@ class BloqueiosIT {
     @BeforeEach
     void prepararCenario() {
         cenario = new CenarioBanco(jdbc);
-        ana = token(cenario.criarUsuario("SOLICITANTE"), "SOLICITANTE");
+        emailAna = cenario.criarUsuario("SOLICITANTE");
+        ana = token(emailAna, "SOLICITANTE");
         rita = token(cenario.criarUsuario("RESPONSAVEL"), "RESPONSAVEL");
         adm = token(cenario.criarUsuario("ADMINISTRADOR"), "ADMINISTRADOR");
         sala = cenario.criarSala(false);
@@ -123,7 +125,7 @@ class BloqueiosIT {
         }
 
         @Test
-        @DisplayName("Q9: bloqueio ADMINISTRATIVO também impede reservas, com mensagem própria")
+        @DisplayName("MN-10/Q9: bloqueio ADMINISTRATIVO também impede reservas, com mensagem própria")
         void administrativo() {
             long auditorio = cenario.criarSala(false);
             bloquear(adm, auditorio, "ADMINISTRATIVO", "14:00", "18:00");
@@ -139,26 +141,44 @@ class BloqueiosIT {
     @DisplayName("Registro do bloqueio")
     class Registro {
 
-        @Test
+        @ParameterizedTest(name = "reserva {0}")
+        @ValueSource(strings = {"SOLICITADA", "APROVADA", "EM_USO"})
         @DisplayName("MN-06: bloqueio sobre reserva ativa é recusado e lista as reservas em conflito")
-        void sobreReservaAtiva() {
-            long reserva = idReserva(reservar(ana, sala, "14:00", "16:00"));
+        void sobreReservaAtiva(String estado) {
+            long recurso = cenario.criarSala(estado.equals("SOLICITADA"));
+            long reserva = idReserva(reservar(ana, recurso, "14:00", "16:00"));
+            if (estado.equals("EM_USO")) {
+                acao(rita, "/api/reservas/" + reserva + "/inicio-uso");
+            }
+            assertThat(cenario.auditoriaDaReserva(reserva)).last().asString().contains("→" + estado);
 
-            var resposta = bloquear(adm, sala, "MANUTENCAO", "15:00", "17:00");
+            var resposta = bloquear(adm, recurso, "MANUTENCAO", "15:00", "17:00");
 
             assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
             assertThat(resposta.getBody().get("reservasEmConflito")).extracting(JsonNode::asLong)
                     .containsExactly(reserva);
-            assertThat(contarBloqueios(sala)).isZero();
+            assertThat(contarBloqueios(recurso)).isZero();
         }
 
-        @Test
-        @DisplayName("MN-07: reserva cancelada não impede o bloqueio")
-        void reservaCanceladaNaoImpede() {
-            long reserva = idReserva(reservar(ana, sala, "14:00", "16:00"));
-            acao(ana, "/api/reservas/" + reserva + "/cancelamento");
+        @ParameterizedTest(name = "reserva {0}")
+        @ValueSource(strings = {"CANCELADA", "REJEITADA", "NAO_COMPARECEU"})
+        @DisplayName("MN-07: reservas que já liberaram o horário não impedem o bloqueio")
+        void reservaQueLiberouNaoImpede(String estado) {
+            long recurso = cenario.criarSala(estado.equals("REJEITADA"));
+            switch (estado) {
+                case "CANCELADA" -> acao(ana, "/api/reservas/" + idReserva(reservar(ana, recurso, "14:00", "16:00"))
+                        + "/cancelamento");
+                case "REJEITADA" -> assertThat(http.postForEntity("/api/reservas/"
+                        + idReserva(reservar(ana, recurso, "14:00", "16:00")) + "/rejeicao",
+                        new HttpEntity<>(Map.of("motivo", "Sem vaga"), cabecalhos(rita)), JsonNode.class)
+                        .getStatusCode()).isEqualTo(HttpStatus.OK);
+                // Não comparecimento no futuro não existe pela API (só a partir do início): pré-condição no banco.
+                default -> cenario.criarReservaNoEstado(emailAna, recurso,
+                        java.time.OffsetDateTime.parse(horario("14:00")), java.time.OffsetDateTime.parse(horario("16:00")),
+                        estado);
+            }
 
-            assertThat(bloquear(adm, sala, "MANUTENCAO", "15:00", "17:00").getStatusCode())
+            assertThat(bloquear(adm, recurso, "MANUTENCAO", "15:00", "17:00").getStatusCode())
                     .isEqualTo(HttpStatus.CREATED);
         }
 
@@ -196,7 +216,7 @@ class BloqueiosIT {
     }
 
     @Test
-    @DisplayName("Q10: encerrar manutenção que ainda não começou libera o horário; registro e encerramento auditados")
+    @DisplayName("MN-11/Q10: encerrar manutenção que ainda não começou libera o horário; registro e encerramento auditados")
     void encerramentoLiberaHorario() {
         var bloqueio = bloquear(adm, sala, "MANUTENCAO", "10:00", "12:00");
         long id = bloqueio.getBody().get("id").asLong();

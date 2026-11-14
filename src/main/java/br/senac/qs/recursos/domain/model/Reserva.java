@@ -96,6 +96,10 @@ public class Reserva {
         if (recursos.isEmpty()) {
             throw new RegraNegocioException("Informe ao menos um recurso para reservar.");
         }
+        // Q12: como na alteração de horário, não se reserva o que já começou ou passou.
+        if (!agora.isBefore(periodo.inicio())) {
+            throw new RegraNegocioException("A reserva deve começar no futuro.");
+        }
         recursos.forEach(Recurso::exigirReservavel);
         var reserva = new Reserva();
         reserva.solicitante = solicitante;

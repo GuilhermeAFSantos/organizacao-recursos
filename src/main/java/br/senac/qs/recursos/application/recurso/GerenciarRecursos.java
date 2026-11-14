@@ -96,7 +96,7 @@ public class GerenciarRecursos {
     public RecursoResumo cadastrarProfessor(String emailAutor, DadosProfessor dados) {
         var autor = usuarioDoToken.ativo(emailAutor);
         exigirMatriculaLivre(dados.matricula(), professores.existsByMatricula(semEspacos(dados.matricula())));
-        var professor = professores.save(Professor.cadastrar(autor, dados.nome(), dados.restrito(),
+        var professor = professores.save(Professor.cadastrar(autor, dados.nome(),
                 dados.matricula(), dados.email(), competencias(dados.competencias())));
         return registrar(professor, "CRIACAO", autor);
     }
@@ -109,7 +109,7 @@ public class GerenciarRecursos {
         exigirMatriculaLivre(dados.matricula(),
                 professores.existsByMatriculaAndIdNot(semEspacos(dados.matricula()), id));
         var novasCompetencias = competencias(dados.competencias());
-        professor.alterar(autor, dados.nome(), dados.restrito(), dados.matricula(), dados.email(), novasCompetencias);
+        professor.alterar(autor, dados.nome(), dados.matricula(), dados.email(), novasCompetencias);
         return registrar(professor, "ALTERACAO", autor);
     }
 

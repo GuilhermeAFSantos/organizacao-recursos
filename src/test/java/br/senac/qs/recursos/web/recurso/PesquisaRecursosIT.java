@@ -272,7 +272,6 @@ class PesquisaRecursosIT {
     long professor(List<String> competencias) {
         var corpo = new HashMap<String, Object>();
         corpo.put("nome", "Professor " + marca);
-        corpo.put("restrito", true);
         corpo.put("matricula", UUID.randomUUID().toString().substring(0, 12));
         corpo.put("competencias", competencias);
         return criar("/api/professores", corpo);

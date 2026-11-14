@@ -109,7 +109,7 @@ class CriarReservaTest {
     @DisplayName("com vários recursos o banco não diz qual conflitou: mensagem genérica, sem inventar")
     void variosRecursos() {
         when(professores.findById(8L)).thenReturn(Optional.of(
-                Professor.cadastrar(adm, "Carlos Lima", false, "P-1", null, Set.of())));
+                Professor.cadastrar(adm, "Carlos Lima", "P-1", null, Set.of())));
         bancoRecusaGravacaoCom("23P01");
 
         assertThatThrownBy(() -> casoDeUso.executar(

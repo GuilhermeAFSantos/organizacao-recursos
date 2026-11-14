@@ -113,7 +113,7 @@ class CadastroRecursosTest {
         void cadastra() {
             var competencias = new LinkedHashSet<>(List.of(Competencia.nova("Java"), Competencia.nova("Banco de Dados")));
 
-            var professor = Professor.cadastrar(adm, "Carlos Lima", true, " P-123 ", " Carlos@Senac.BR ", competencias);
+            var professor = Professor.cadastrar(adm, "Carlos Lima", " P-123 ", " Carlos@Senac.BR ", competencias);
 
             assertThat(professor.getTipo()).isEqualTo(TipoRecurso.PROFESSOR);
             assertThat(professor.getMatricula()).isEqualTo("P-123");
@@ -127,13 +127,13 @@ class CadastroRecursosTest {
         @ValueSource(strings = "  ")
         @DisplayName("e-mail é opcional")
         void emailOpcional(String email) {
-            assertThat(Professor.cadastrar(adm, "Carlos", false, "P-1", email, Set.of()).getEmail()).isNull();
+            assertThat(Professor.cadastrar(adm, "Carlos", "P-1", email, Set.of()).getEmail()).isNull();
         }
 
         @Test
         @DisplayName("matrícula é obrigatória")
         void matriculaObrigatoria() {
-            assertThatThrownBy(() -> Professor.cadastrar(adm, "Carlos", false, " ", null, Set.of()))
+            assertThatThrownBy(() -> Professor.cadastrar(adm, "Carlos", " ", null, Set.of()))
                     .isInstanceOf(RegraNegocioException.class)
                     .hasMessage("Informe a matrícula do professor.");
         }
@@ -141,14 +141,24 @@ class CadastroRecursosTest {
         @Test
         @DisplayName("alteração substitui as competências")
         void altera() {
-            var professor = Professor.cadastrar(adm, "Carlos", false, "P-1", null, Set.of(Competencia.nova("Java")));
+            var professor = Professor.cadastrar(adm, "Carlos", "P-1", null, Set.of(Competencia.nova("Java")));
 
-            professor.alterar(adm, "Carlos Lima", true, "P-2", "c@senac.br", Set.of(Competencia.nova("Redes")));
+            professor.alterar(adm, "Carlos Lima", "P-2", "c@senac.br", Set.of(Competencia.nova("Redes")));
 
             assertThat(professor.getNome()).isEqualTo("Carlos Lima");
             assertThat(professor.getMatricula()).isEqualTo("P-2");
             assertThat(professor.nomesDasCompetencias()).containsExactly("Redes");
         }
+    }
+
+    @Test
+    @DisplayName("Q13/D4: todo professor é restrito, sem opção no cadastro")
+    void professorSempreRestrito() {
+        var professor = Professor.cadastrar(adm, "Carlos", "P-9", null, Set.of());
+        assertThat(professor.isRestrito()).as("no cadastro").isTrue();
+
+        professor.alterar(adm, "Carlos Lima", "P-9", null, Set.of());
+        assertThat(professor.isRestrito()).as("na alteração").isTrue();
     }
 
     @Nested
@@ -221,7 +231,7 @@ class CadastroRecursosTest {
 
             assertThatThrownBy(() -> Sala.cadastrar(outro, "Sala", false, 10, "A", 1, TipoSala.AULA))
                     .isInstanceOf(OperacaoNaoPermitidaException.class).hasMessage(mensagem);
-            assertThatThrownBy(() -> Professor.cadastrar(outro, "Carlos", false, "P-1", null, Set.of()))
+            assertThatThrownBy(() -> Professor.cadastrar(outro, "Carlos", "P-1", null, Set.of()))
                     .isInstanceOf(OperacaoNaoPermitidaException.class).hasMessage(mensagem);
             assertThatThrownBy(() -> Material.cadastrar(outro, "Projetor", false, "PAT-1", "Projetor",
                     EstadoConservacao.BOM)).isInstanceOf(OperacaoNaoPermitidaException.class).hasMessage(mensagem);

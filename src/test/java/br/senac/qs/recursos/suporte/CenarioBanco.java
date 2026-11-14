@@ -60,6 +60,33 @@ public class CenarioBanco {
         return id;
     }
 
+    /**
+     * Reserva gravada direto no banco, já no estado pedido: só para PRÉ-CONDIÇÕES que a API não
+     * consegue montar (ex.: reserva no passado, que a API recusa, ou NAO_COMPARECEU no futuro).
+     * A ocupação só bloqueia o horário nos estados que o seguram, como no domínio.
+     */
+    public long criarReservaNoEstado(String emailSolicitante, long recursoId, java.time.OffsetDateTime inicio,
+                                     java.time.OffsetDateTime fim, String status) {
+        long solicitante = jdbc.queryForObject("SELECT id FROM usuario WHERE email = ?", Long.class, emailSolicitante);
+        long reserva = jdbc.queryForObject("""
+                INSERT INTO reserva (solicitante_id, inicio, fim, finalidade, status)
+                VALUES (?, ?, ?, 'Preparada pelo teste', ?) RETURNING id""", Long.class, solicitante, inicio, fim, status);
+        boolean bloqueante = !java.util.Set.of("REJEITADA", "CANCELADA", "NAO_COMPARECEU").contains(status);
+        jdbc.update("INSERT INTO ocupacao (recurso_id, reserva_id, inicio, fim, bloqueante) VALUES (?, ?, ?, ?, ?)",
+                recursoId, reserva, inicio, fim, bloqueante);
+        return reserva;
+    }
+
+    /**
+     * Reserva APROVADA das 10:00 às 12:00 (Brasília) num dia já passado. A API recusa criar no
+     * passado (Q12); testes de não comparecimento, atraso e alteração tardia precisam dela.
+     */
+    public long criarReservaAprovadaNoPassado(String emailSolicitante, long recursoId, java.time.LocalDate dia) {
+        var brasilia = java.time.ZoneId.of("America/Sao_Paulo");
+        return criarReservaNoEstado(emailSolicitante, recursoId, dia.atTime(10, 0).atZone(brasilia).toOffsetDateTime(),
+                dia.atTime(12, 0).atZone(brasilia).toOffsetDateTime(), "APROVADA");
+    }
+
     public int contarReservas(long salaId) {
         return jdbc.queryForObject("""
                 SELECT count(DISTINCT reserva_id) FROM ocupacao WHERE recurso_id = ? AND reserva_id IS NOT NULL""",

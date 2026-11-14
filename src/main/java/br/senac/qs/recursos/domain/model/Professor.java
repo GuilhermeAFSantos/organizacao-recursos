@@ -36,23 +36,25 @@ public class Professor extends Recurso {
         super(nome, restrito);
     }
 
-    public static Professor cadastrar(Usuario autor, String nome, boolean restrito, String matricula, String email,
+    /**
+     * D4 (Q13): todo professor é RESTRITO. O enunciado manda o RESPONSAVEL "validar a alocação de
+     * docentes", então reservar um professor sempre passa por aprovação. Não há opção no cadastro.
+     */
+    public static Professor cadastrar(Usuario autor, String nome, String matricula, String email,
                                       Set<Competencia> competencias) {
         exigirAdministrador(autor);
-        var professor = new Professor(nome, restrito);
-        professor.preencher(nome, restrito, matricula, email, competencias);
+        var professor = new Professor(nome, true);
+        professor.preencher(nome, matricula, email, competencias);
         return professor;
     }
 
-    public void alterar(Usuario autor, String nome, boolean restrito, String matricula, String email,
-                        Set<Competencia> competencias) {
+    public void alterar(Usuario autor, String nome, String matricula, String email, Set<Competencia> competencias) {
         exigirAdministrador(autor);
-        preencher(nome, restrito, matricula, email, competencias);
+        preencher(nome, matricula, email, competencias);
     }
 
-    private void preencher(String nome, boolean restrito, String matricula, String email,
-                           Set<Competencia> competencias) {
-        definirDadosGerais(nome, restrito);
+    private void preencher(String nome, String matricula, String email, Set<Competencia> competencias) {
+        definirDadosGerais(nome, true);
         this.matricula = obrigatorio(matricula, "Informe a matrícula do professor.");
         this.email = email == null || email.isBlank() ? null : Usuario.normalizarEmail(email);
         this.competencias.clear();

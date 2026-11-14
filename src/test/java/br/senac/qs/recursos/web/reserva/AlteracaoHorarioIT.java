@@ -204,14 +204,27 @@ class AlteracaoHorarioIT {
         @Test
         @DisplayName("reserva que já começou → 422")
         void jaComecou() {
-            long reserva = idDe(http.postForEntity("/api/reservas", new HttpEntity<>(corpoReserva(sala, null,
-                    HA_30_DIAS, "10:00", "12:00"), cabecalhos(ana)), JsonNode.class));
+            long reserva = cenario.criarReservaAprovadaNoPassado(emailAna, sala, HA_30_DIAS);
 
             var resposta = alterar(ana, reserva, "14:00", "16:00");
 
             assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
             assertThat(resposta.getBody().get("detail").asText())
                     .isEqualTo("O horário só pode ser alterado antes do início da reserva.");
+        }
+
+        @Test
+        @DisplayName("AU-03: cliente não define o estado ao alterar o horário (mass assignment) → 400")
+        void estadoNaoPodeSerEnviado() {
+            long reserva = reservar(ana, cenario.criarSala(true), null, "10:00", "12:00");
+            Map<String, Object> corpo = Map.of("inicio", texto("14:00"), "fim", texto("16:00"), "status", "APROVADA");
+
+            var resposta = http.exchange("/api/reservas/" + reserva + "/horario", HttpMethod.PUT,
+                    new HttpEntity<>(corpo, cabecalhos(ana)), JsonNode.class);
+
+            assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(periodoGravado(reserva)).containsExactly(horario("10:00"), horario("12:00"));
+            assertThat(acoesAuditadas(reserva)).as("continua só com a criação").hasSize(1);
         }
 
         @Test
@@ -277,7 +290,6 @@ class AlteracaoHorarioIT {
     long professor() {
         var corpo = new HashMap<String, Object>();
         corpo.put("nome", "Carlos Lima");
-        corpo.put("restrito", false);
         corpo.put("matricula", UUID.randomUUID().toString().substring(0, 12));
         return idDe(http.postForEntity("/api/professores", new HttpEntity<>(corpo, cabecalhos(adm)), JsonNode.class));
     }

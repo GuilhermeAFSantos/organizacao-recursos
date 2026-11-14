@@ -149,7 +149,6 @@ class ConflitosEvitadosIT {
         String adm = token(cenario.criarUsuario("ADMINISTRADOR"), "ADMINISTRADOR");
         var corpo = new HashMap<String, Object>();
         corpo.put("nome", "Carlos Lima");
-        corpo.put("restrito", false);
         corpo.put("matricula", UUID.randomUUID().toString().substring(0, 12));
         var resposta = http.postForEntity("/api/professores", new HttpEntity<>(corpo, cabecalhos(adm)), JsonNode.class);
         assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.CREATED);

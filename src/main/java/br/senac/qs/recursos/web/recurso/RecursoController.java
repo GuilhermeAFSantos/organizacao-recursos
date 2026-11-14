@@ -63,9 +63,9 @@ public class RecursoController {
         }
     }
 
+    /** Sem o campo restrito: todo professor é restrito (D4). Enviá-lo é recusado como campo desconhecido. */
     public record ProfessorRequest(
             @NotBlank @Size(max = 120) String nome,
-            @NotNull Boolean restrito,
             @NotBlank @Size(max = 30) String matricula,
             @Email @Size(max = 160) String email,
             @Size(max = 20) List<@NotBlank @Size(max = 80) String> competencias) {
@@ -75,7 +75,7 @@ public class RecursoController {
         }
 
         DadosProfessor dados() {
-            return new DadosProfessor(nome, restrito, matricula, email, competencias);
+            return new DadosProfessor(nome, matricula, email, competencias);
         }
     }
 
