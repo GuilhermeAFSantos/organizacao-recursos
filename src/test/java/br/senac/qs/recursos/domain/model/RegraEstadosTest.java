@@ -140,6 +140,28 @@ class RegraEstadosTest {
         assertThat(reserva.getStatus()).isEqualTo(StatusReserva.APROVADA);
     }
 
+    @ParameterizedTest(name = "agora {0} (Brasília {1}) → registrado = {2}")
+    @CsvSource({
+        "2026-12-01T10:59:59Z, 07:59:59, false",
+        "2026-12-01T11:00:00Z, 08:00:00, true",
+        "2026-12-01T14:00:00Z, 11:00:00, true"
+    })
+    @DisplayName("Fronteira Q5: não comparecimento só a partir do início (inclusive depois do fim)")
+    void naoComparecimentoSoAPartirDoInicio(String agora, String horaLocal, boolean registrado) {
+        var relogio = Clock.fixed(Instant.parse(agora), ZoneOffset.UTC);
+        var reserva = reservaNoEstado(StatusReserva.APROVADA);
+
+        if (registrado) {
+            reserva.registrarNaoComparecimento(rita, null, relogio.instant());
+            assertThat(reserva.getStatus()).isEqualTo(StatusReserva.NAO_COMPARECEU);
+        } else {
+            assertThatThrownBy(() -> reserva.registrarNaoComparecimento(rita, null, relogio.instant()))
+                    .isInstanceOf(RegraNegocioException.class)
+                    .hasMessage("O não comparecimento só pode ser registrado a partir do horário de início.");
+            assertThat(reserva.getStatus()).isEqualTo(StatusReserva.APROVADA);
+        }
+    }
+
     /** Leva a reserva ao estado pedido pelos caminhos permitidos e descarta as mudanças até ali. */
     Reserva reservaNoEstado(StatusReserva estado) {
         var reserva = Reserva.solicitar(ana, List.of(laboratorio), new PeriodoReserva(INICIO, FIM), "Aula", ANTES);
