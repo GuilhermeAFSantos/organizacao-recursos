@@ -29,6 +29,7 @@ class RegraAprovacaoTest {
     final Sala sala101 = new Sala("Sala 101", false);
     final Sala laboratorio = new Sala("Laboratório 3", true);
     final Usuario rita = new Usuario("rita@senac.br", Perfil.RESPONSAVEL);
+    final Usuario raul = new Usuario("raul@senac.br", Perfil.RESPONSAVEL);
     final Usuario bruno = new Usuario("bruno@senac.br", Perfil.SOLICITANTE);
     final Usuario adm = new Usuario("adm@senac.br", Perfil.ADMINISTRADOR);
     final Professor carlos = Professor.cadastrar(adm, "Prof. Carlos", "P-1", null, java.util.Set.of());
@@ -111,6 +112,19 @@ class RegraAprovacaoTest {
                 .hasMessage("Somente um RESPONSAVEL pode aprovar reservas.");
 
         assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
+    }
+
+    @Test
+    @DisplayName("AU-04: RESPONSAVEL não aprova reserva solicitada por ele mesmo; outro RESPONSAVEL aprova")
+    void responsavelNaoAprovaReservaQueEleMesmoSolicitou() {
+        var daRita = Reserva.solicitar(rita, List.of(laboratorio), PERIODO, "Reunião", AGORA);
+
+        assertThatThrownBy(() -> daRita.aprovar(rita, AGORA)).isInstanceOf(OperacaoNaoPermitidaException.class)
+                .hasMessage("Você não pode aprovar ou rejeitar uma reserva solicitada por você.");
+        assertThat(daRita.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
+
+        daRita.aprovar(raul, AGORA);
+        assertThat(daRita.getAprovador()).isSameAs(raul);
     }
 
     static void decidir(Reserva reserva, String acao, Usuario autor) {
