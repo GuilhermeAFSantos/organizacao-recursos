@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
@@ -32,7 +33,7 @@ import org.springframework.test.context.ActiveProfiles;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import(PostgresTestcontainersConfig.class)
 @ActiveProfiles("test")
-@DisplayName("Schema do banco (Flyway V1) em PostgreSQL real")
+@DisplayName("Schema do banco (migrations Flyway) em PostgreSQL real")
 class EsquemaBancoIT {
 
     private static final String SQLSTATE_EXCLUSAO = "23P01";
@@ -150,6 +151,36 @@ class EsquemaBancoIT {
     }
 
     @Nested
+    @DisplayName("RC07: reservas nunca são apagadas fisicamente")
+    class ReservaSemDelete {
+
+        // Decisão de projeto: cancelar é MUDANÇA DE ESTADO, nunca DELETE. Assim reservas
+        // iniciadas (EM_USO ou depois) jamais somem, e o histórico de todas é preservado.
+        @ParameterizedTest(name = "DELETE de reserva {0} é bloqueado")
+        @ValueSource(strings = {"SOLICITADA", "APROVADA", "EM_USO", "CONCLUIDA",
+                                "REJEITADA", "CANCELADA", "NAO_COMPARECEU"})
+        void deleteBloqueadoEmQualquerStatus(String status) {
+            long reserva = criarReserva(8, 10, status);
+
+            // O gatilho BEFORE aborta o comando antes de qualquer remoção. (Não dá para conferir
+            // com um SELECT depois: no PostgreSQL, após um erro a transação do teste fica abortada.)
+            assertThatThrownBy(() -> jdbc.update("DELETE FROM reserva WHERE id = ?", reserva))
+                    .isInstanceOf(DataAccessException.class)
+                    .hasMessageContaining("reservas não podem ser apagadas");
+        }
+
+        @Test
+        @DisplayName("TRUNCATE da tabela reserva é bloqueado")
+        void truncateBloqueado() {
+            criarReserva(8, 10);
+
+            assertThatThrownBy(() -> jdbc.execute("TRUNCATE reserva CASCADE"))
+                    .isInstanceOf(DataAccessException.class)
+                    .hasMessageContaining("reservas não podem ser apagadas");
+        }
+    }
+
+    @Nested
     @DisplayName("RC08: auditoria somente inserção")
     class AuditoriaImutavel {
 
@@ -196,10 +227,14 @@ class EsquemaBancoIT {
     }
 
     private long criarReserva(int inicio, int fim) {
+        return criarReserva(inicio, fim, "SOLICITADA");
+    }
+
+    private long criarReserva(int inicio, int fim, String status) {
         return jdbc.queryForObject("""
                 INSERT INTO reserva (solicitante_id, inicio, fim, finalidade, status)
-                VALUES (?, ?, ?, 'Aula', 'SOLICITADA') RETURNING id""",
-                Long.class, usuarioId, hora(inicio), hora(fim));
+                VALUES (?, ?, ?, 'Aula', ?) RETURNING id""",
+                Long.class, usuarioId, hora(inicio), hora(fim), status);
     }
 
     private void ocupar(long recurso, long reserva, int inicio, int fim, boolean bloqueante) {
