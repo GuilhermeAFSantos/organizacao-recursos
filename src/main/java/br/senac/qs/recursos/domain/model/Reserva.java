@@ -171,13 +171,13 @@ public class Reserva {
     }
 
     public void aprovar(Usuario responsavel, Instant agora) {
-        recusarSolicitante(responsavel, "aprovar");
+        exigirResponsavel(responsavel, "aprovar");
         this.aprovador = responsavel;
         mudarPara(APROVADA, responsavel.getId(), responsavel.getEmail(), null, agora);
     }
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
-        recusarSolicitante(responsavel, "rejeitar");
+        exigirResponsavel(responsavel, "rejeitar");
     }
 
     public void cancelar(Usuario autor, String motivo, Instant agora) {
@@ -202,7 +202,7 @@ public class Reserva {
         return retiradas;
     }
 
-    private static void recusarSolicitante(Usuario autor, String acao) {
+    private static void exigirResponsavel(Usuario autor, String acao) {
         if (autor.getPerfil() != Perfil.RESPONSAVEL) {
             throw new OperacaoNaoPermitidaException("Somente um RESPONSAVEL pode " + acao + " reservas.");
         }
