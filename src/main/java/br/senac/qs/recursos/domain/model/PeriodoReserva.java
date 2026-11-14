@@ -1,6 +1,8 @@
 package br.senac.qs.recursos.domain.model;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 import jakarta.persistence.Embeddable;
@@ -16,6 +18,11 @@ import jakarta.persistence.Embeddable;
  */
 @Embeddable
 public record PeriodoReserva(Instant inicio, Instant fim) {
+
+    /** Fuso de exibição: o banco guarda instantes (UTC), as mensagens mostram o horário local. */
+    public static final ZoneId BRASILIA = ZoneId.of("America/Sao_Paulo");
+    private static final DateTimeFormatter DATA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
 
     static final String INICIO_OBRIGATORIO = "O início da reserva é obrigatório.";
     static final String FIM_OBRIGATORIO = "O término da reserva é obrigatório.";
@@ -46,5 +53,13 @@ public record PeriodoReserva(Instant inicio, Instant fim) {
      */
     public boolean sobrepoe(PeriodoReserva outro) {
         return this.inicio.isBefore(outro.fim) && outro.inicio.isBefore(this.fim);
+    }
+
+    /** Ex.: "01/12/2026 10:00–12:00", ou com as duas datas quando o período vira o dia. */
+    public String descrever() {
+        var de = inicio.atZone(BRASILIA);
+        var ate = fim.atZone(BRASILIA);
+        var formatoFim = de.toLocalDate().equals(ate.toLocalDate()) ? HORA : DATA_HORA;
+        return DATA_HORA.format(de) + "–" + formatoFim.format(ate);
     }
 }

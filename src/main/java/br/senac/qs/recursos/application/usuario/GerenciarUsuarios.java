@@ -3,6 +3,7 @@ package br.senac.qs.recursos.application.usuario;
 import java.time.Clock;
 import java.util.List;
 
+import br.senac.qs.recursos.application.UsuarioDoToken;
 import br.senac.qs.recursos.domain.exception.CadastroDuplicadoException;
 import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
@@ -12,7 +13,6 @@ import br.senac.qs.recursos.domain.model.RegistroAuditoria;
 import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.UsuarioRepository;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,13 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class GerenciarUsuarios {
 
+    private final UsuarioDoToken usuarioDoToken;
     private final UsuarioRepository usuarios;
     private final PasswordEncoder senhas;
     private final RegistroAuditoriaRepository auditoria;
     private final Clock clock;
 
-    public GerenciarUsuarios(UsuarioRepository usuarios, PasswordEncoder senhas,
+    public GerenciarUsuarios(UsuarioDoToken usuarioDoToken, UsuarioRepository usuarios, PasswordEncoder senhas,
                              RegistroAuditoriaRepository auditoria, Clock clock) {
+        this.usuarioDoToken = usuarioDoToken;
         this.usuarios = usuarios;
         this.senhas = senhas;
         this.auditoria = auditoria;
@@ -74,8 +76,7 @@ public class GerenciarUsuarios {
 
     @Transactional
     public void alterarPropriaSenha(String email, String senhaAtual, String novaSenha) {
-        var usuario = usuarios.findByEmailIgnoreCase(email).filter(Usuario::isAtivo)
-                .orElseThrow(() -> new AccessDeniedException("usuário do token inexistente ou inativo"));
+        var usuario = usuarioDoToken.ativo(email);
         if (!senhas.matches(senhaAtual, usuario.getSenhaHash())) {
             throw new RegraNegocioException("A senha atual não confere.");
         }
@@ -84,8 +85,7 @@ public class GerenciarUsuarios {
     }
 
     private Usuario administrador(String email) {
-        var autor = usuarios.findByEmailIgnoreCase(email).filter(Usuario::isAtivo)
-                .orElseThrow(() -> new AccessDeniedException("usuário do token inexistente ou inativo"));
+        var autor = usuarioDoToken.ativo(email);
         if (autor.getPerfil() != Perfil.ADMINISTRADOR) {
             throw new OperacaoNaoPermitidaException("Somente um ADMINISTRADOR pode gerenciar usuários.");
         }

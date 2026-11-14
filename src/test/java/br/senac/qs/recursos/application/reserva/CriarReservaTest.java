@@ -12,12 +12,19 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
+import br.senac.qs.recursos.application.UsuarioDoToken;
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.model.Reserva;
+import br.senac.qs.recursos.domain.model.Perfil;
+import br.senac.qs.recursos.domain.model.Professor;
 import br.senac.qs.recursos.domain.model.Sala;
+import br.senac.qs.recursos.domain.model.TipoSala;
 import br.senac.qs.recursos.domain.model.Usuario;
+import br.senac.qs.recursos.domain.repository.MaterialRepository;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
+import br.senac.qs.recursos.domain.repository.ProfessorRepository;
 import br.senac.qs.recursos.domain.repository.RecursoRepository;
 import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
@@ -33,8 +40,8 @@ import org.springframework.dao.DataIntegrityViolationException;
  * teste de concorrência, só acontece quando duas requisições passam juntas pela pré-checagem —
  * o banco recusa a segunda com SQLSTATE 23P01 (exclusion_violation).
  */
-@DisplayName("CriarReservaSala: tradução da recusa do banco (RC03)")
-class CriarReservaSalaTest {
+@DisplayName("CriarReserva: tradução da recusa do banco (RC03)")
+class CriarReservaTest {
 
     static final Instant INICIO = Instant.parse("2026-12-01T11:00:00Z");
     static final Instant FIM = Instant.parse("2026-12-01T13:00:00Z");
@@ -47,25 +54,28 @@ class CriarReservaSalaTest {
 
     RegistroAuditoriaRepository auditoria = mock(RegistroAuditoriaRepository.class);
 
-    CriarReservaSala casoDeUso = new CriarReservaSala(usuarios, recursos, salas, ocupacoes, reservas, auditoria,
+    ProfessorRepository professores = mock(ProfessorRepository.class);
+    MaterialRepository materiais = mock(MaterialRepository.class);
+
+    CriarReserva casoDeUso = new CriarReserva(new UsuarioDoToken(usuarios), new AgendaDeRecursos(recursos, ocupacoes),
+            salas, professores, materiais, reservas, auditoria,
             Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC));
 
-    CriarReservaSalaComando comando = new CriarReservaSalaComando("ana@senac.br", 7L, INICIO, FIM, "Aula");
+    CriarReservaComando comando = new CriarReservaComando("ana@senac.br", 7L, null, List.of(), INICIO, FIM, "Aula");
+
+    final Usuario adm = Usuario.cadastrar("Adm", "adm@senac.br", "hash", Perfil.ADMINISTRADOR, INICIO);
 
     @BeforeEach
     void cenarioEmQueAPreChecagemNaoVeConflito() {
         var usuario = mock(Usuario.class);
         when(usuario.isAtivo()).thenReturn(true);
-        var sala = mock(Sala.class);
-        when(sala.getId()).thenReturn(7L);
-        when(sala.getNome()).thenReturn("Sala 101");
-        when(sala.isAtivo()).thenReturn(true);
+        var sala = Sala.cadastrar(adm, "Sala 101", false, 40, "A", 1, TipoSala.AULA);
 
         when(usuarios.findByEmailIgnoreCase("ana@senac.br")).thenReturn(Optional.of(usuario));
         when(recursos.travar(7L)).thenReturn(Optional.of(7L));
         when(salas.findById(7L)).thenReturn(Optional.of(sala));
-        // A outra transação ainda não confirmou: a consulta prévia vê o horário livre.
-        when(ocupacoes.sobrepostas(7L, INICIO, FIM)).thenReturn(List.of());
+        // A outra transação ainda não confirmou: a consulta prévia vê o horário livre (lista vazia,
+        // o padrão do mock).
     }
 
     @Test
@@ -76,6 +86,19 @@ class CriarReservaSalaTest {
         assertThatThrownBy(() -> casoDeUso.executar(comando))
                 .isInstanceOf(ConflitoHorarioException.class)
                 .hasMessage("A sala Sala 101 já está ocupada nesse horário. Escolha outro horário ou outra sala.");
+    }
+
+    @Test
+    @DisplayName("com vários recursos o banco não diz qual conflitou: mensagem genérica, sem inventar")
+    void variosRecursos() {
+        when(professores.findById(8L)).thenReturn(Optional.of(
+                Professor.cadastrar(adm, "Carlos Lima", false, "P-1", null, Set.of())));
+        bancoRecusaGravacaoCom("23P01");
+
+        assertThatThrownBy(() -> casoDeUso.executar(
+                new CriarReservaComando("ana@senac.br", 7L, 8L, List.of(), INICIO, FIM, "Aula")))
+                .isInstanceOf(ConflitoHorarioException.class)
+                .hasMessage("Um dos recursos já está ocupado nesse horário. Escolha outro horário.");
     }
 
     @Test

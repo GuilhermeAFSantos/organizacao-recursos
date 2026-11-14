@@ -10,6 +10,7 @@ br.senac.qs.recursos
 ├── domain            regras de negócio; não conhece HTTP
 │   ├── model         entidades, value objects e enums
 │   ├── repository    interfaces Spring Data
+│   ├── pesquisa      critérios de pesquisa (value objects usados pela web e pelos repositórios)
 │   └── exception     exceções com mensagem para o usuário final (pt-BR)
 ├── application       casos de uso (@Transactional) e portas de saída (ex.: NotificadorPort)
 ├── infrastructure    configuração, segurança (JWT) e adaptadores (cliente HTTP de notificação)
@@ -73,7 +74,7 @@ classDiagram
 | Tabela `ocupacao` (recurso, período, bloqueante), alimentada por Reserva **ou** Bloqueio | RC02, RC03 e RC04 viram a mesma regra no banco. Uma reserva pode juntar sala, professor e materiais e é tudo ou nada. |
 | Intervalo semiaberto `[inicio, fim)` | 08h–10h e 10h–12h **não** conflitam: intervalos que só se tocam são permitidos. |
 | `PeriodoReserva` (value object) | Valida a RC01 no construtor e concentra `sobrepoe()`. É o alvo do TDD. |
-| Única forma de mudar o estado: `Reserva.transitar(novo, usuario, motivo)` | Valida a RC05 e gera o `RegistroAuditoria` (RC08) no mesmo lugar. Não há `setStatus` público. |
+| Única forma de mudar o estado: `Reserva.transitar(novo, usuario, motivo)` | Valida a RC05 e gera o `RegistroAuditoria` (RC08) no mesmo lugar. Não há `setStatus` público. A única exceção é a reaprovação após alteração de horário (APROVADA → SOLICITADA), também auditada. |
 | Datas em `Instant` / `TIMESTAMPTZ` (UTC) | Instante absoluto, sem ambiguidade de fuso. A API recebe ISO-8601 com offset e a interface exibe no horário de São Paulo. |
 | Auditoria e reservas protegidas por trigger | Somente inserção na auditoria (V1); proibido DELETE em reservas (V2, RC07). Vale até contra SQL manual. |
 
@@ -203,6 +204,60 @@ Perguntas registradas em [docs/testes/bdd-aprovacao-bloqueio.md](testes/bdd-apro
 | Gestão de usuários | Só ADMINISTRADOR cadastra, lista, desativa e redefine senha; ninguém desativa a si mesmo; e-mail normalizado e único (409). Cada mudança é auditada sem guardar senha. | Evita ficar sem administrador; RF10. |
 | Troca da própria senha | Qualquer usuário logado, informando a senha atual (422 se não conferir). | Quem roubou só o token não troca a senha. |
 
+### Decisões da fatia de cadastros e pesquisa (Fase 2)
+
+Tomadas pela equipe técnica (sem regra no enunciado) e registradas aqui para a prova oral.
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Quem cadastra | Só o ADMINISTRADOR cadastra, altera, desativa e reativa. Qualquer usuário logado consulta e pesquisa. | O mesmo perfil que já gerencia usuários e bloqueios. |
+| Sem exclusão | Recurso não é apagado, é **desativado**: some da pesquisa e recusa reservas novas (422, "está desativada"). Reativação permitida. | Reservas antigas apontam para o recurso e não podem ser apagadas (RC07); o histórico fica íntegro. |
+| Desativar com reservas | Recusado (422) enquanto houver reserva SOLICITADA, APROVADA ou EM_USO que ainda não terminou; a mensagem diz quantas. | Desativar em silêncio deixaria quem reservou sem o recurso e sem aviso. Cancelar automaticamente seria uma ação grande demais para um efeito colateral. |
+| Concorrência na desativação | Trava a linha do recurso (`RecursoRepository.travar`), como reservas e bloqueios. | Uma reserva simultânea espera e encontra o recurso inativo, ou termina antes e é contada. |
+| Duplicidade | Nome de sala único sem diferenciar maiúsculas (índice parcial da **V4**); matrícula e patrimônio únicos (V1). Nomes de professor e de material podem repetir. | Duas "Sala 101" confundem quem reserva; dois projetores iguais são normais. A aplicação confere antes (mensagem clara, 409) e o índice garante sob concorrência. |
+| Competências | Texto livre, normalizado (espaços) e comparado sem maiúsculas; reaproveitada entre professores, criada na hora se não existir. | Evita "Java" e "java" como competências diferentes sem exigir um cadastro separado de competências. |
+| Restrito | Informado explicitamente em todo cadastro (`restrito` obrigatório). Alterar não muda reservas já feitas. | Evita um padrão escondido ("professor é restrito?") e efeitos retroativos. |
+| Alteração concorrente | `@Version` em `Recurso` (409 "Edição concorrente"). | Duas alterações simultâneas do mesmo cadastro não se sobrescrevem em silêncio. |
+| Localização | Bloco + andar da sala (andar pode ser negativo: subsolo). Professores e materiais não têm localização. | É o que o schema da V1 já modelava. |
+| Disponibilidade | `inicio` e `fim` juntos (400 caso contrário); livre = nenhuma ocupação bloqueante sobreposta, pela **mesma regra** da constraint (encostar não conflita). Material DANIFICADO não é oferecido. | Pesquisa e reserva não podem discordar sobre o que é "livre". |
+| Formato da pesquisa | `GET /api/recursos` com filtros na query string, combinados com "e"; página própria (`itens`, `pagina`, `tamanho`, `totalItens`, `totalPaginas`), até 100 itens, ordem por nome e id. | O JSON do `Page` do Spring não é estável entre versões; o id desempata nomes iguais entre páginas. |
+| Como a consulta é montada | JPA Criteria (`PesquisaDeRecursos`): cada filtro informado vira uma subconsulta "id está em…". | Parâmetros sempre ligados (sem SQL concatenado, sem injeção) e filtro de sala que nunca afeta professores. |
+| Resposta polimórfica | JSON "plano": campos comuns e, no mesmo nível, só os do tipo (`@JsonUnwrapped`). | O cliente lê `capacidade` direto, sem `if` por tipo de objeto aninhado. |
+
+**Dívida quitada:** a busca "usuário do token existe e está ativo, senão 403" estava copiada em
+quatro casos de uso; agora é o componente `UsuarioDoToken` (commit de refactor sem mudança de
+comportamento).
+
+**Lição do ArchUnit:** na primeira versão, o critério de pesquisa ficou em `domain.repository` e o
+DTO da web passou a depender dele. O `ArquiteturaTest` reprovou o build antes do commit; o
+critério foi movido para `domain.pesquisa`.
+
+### Decisões da fatia de reserva com vários recursos e alteração de horário (Fase 2)
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Composição da reserva | Sala **obrigatória**; professor e até 10 materiais opcionais, sem repetição, na mesma reserva. | Toda aula acontece num espaço; manter `salaId` também preserva o contrato da API já usado. |
+| Tudo ou nada | Uma ocupação por recurso, na mesma transação. Se qualquer recurso não existe (404), não é reservável (422) ou está ocupado (409), nada é gravado. | Uma aula sem o professor ou sem o projetor não serve. |
+| Aprovação | Automática só se **nenhum** recurso for restrito; basta um (ex.: professor restrito) para exigir RESPONSAVEL. | RC06 aplicada ao conjunto. |
+| Reservável | Recurso ativo; material também não pode estar DANIFICADO (regra no domínio, `Recurso.exigirReservavel`). | A pesquisa já não oferecia material danificado; a reserva agora também recusa. |
+| Ordem de travamento | Os recursos são travados em **ordem crescente de id** (`AgendaDeRecursos`). | Pedidos [A, B] e [B, A] simultâneos travariam um cada e esperariam um pelo outro (deadlock). Testado com materiais em ordens opostas. |
+| Mensagem de conflito | Diz qual recurso e por quê, no gênero certo: "O professor X já está ocupado…", "O material Projetor (PAT-1) está em manutenção…". Se o conflito só aparece no banco (23P01) e há vários recursos, a mensagem é genérica. | O banco não diz qual recurso conflitou; melhor genérico do que inventar. |
+| Quem altera o horário | A dona da reserva ou um ADMINISTRADOR (as mesmas regras do cancelamento). | Coerência com Q7. |
+| Quando altera | Só SOLICITADA ou APROVADA, antes do início, e o novo horário precisa começar no futuro. Os recursos continuam os mesmos. | Depois do início, a reserva já está em uso ou perdida; trocar recursos seria outra reserva. |
+| Reaprovação | APROVADA com recurso restrito volta a **SOLICITADA** ao mudar de horário (aprovador apagado, motivo registrado). Sem recurso restrito, continua APROVADA. | A aprovação valia para o horário antigo. É o único caminho que volta um estado, e fica auditado como `ALTERACAO` (fora da matriz de transições). |
+| Própria reserva | A agenda ignora as ocupações da própria reserva: deslocar 10–12 para 11–13 é permitido. | Senão a reserva conflitaria consigo mesma. |
+| Validar antes de consultar | `exigirAlteravel` valida sem mudar nada; só depois a agenda é consultada e a reserva alterada. | A consulta faria o Hibernate gravar antes uma mudança não validada, e a recusa do banco sairia sem mensagem clara. |
+| Alterações simultâneas | O `@Version` da reserva recusa (409 "Edição concorrente") a alteração feita sobre uma versão desatualizada. Testado: nenhum 500 e ocupação nunca dessincronizada da reserva. | Mitiga o risco "início/fim de reserva e ocupação dessincronizados". |
+| Auditoria | Ação `ALTERACAO` com "Horário alterado de 01/12/2026 10:00–12:00 para …" no horário de Brasília. | RC08: o histórico mostra o que mudou, não só que mudou. |
+
+**Ponto em aberto:** a **criação** de reserva ainda aceita horário no passado (os testes de não
+comparecimento usam isso). A alteração já exige horário futuro. Decidir se a criação também deve
+exigir.
+
+**Build:** um build local falhou com "Could not self-attach to current VM" (Mockito se anexando à
+JVM em tempo de execução, intermitente no Windows). O Mockito agora é carregado como `-javaagent`
+nos testes, como ele próprio recomenda para Java 21+.
+
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
 mudança para a auditoria). A verificação de permissão vem primeiro para não revelar o estado da
@@ -215,9 +270,9 @@ reserva a quem não pode agir sobre ela.
 | Prazo (semana 46) | Projeto | Priorizar as RC e a RTM; confirmar a data com o professor |
 | Código gerado com IA e prova oral | Processo | Cada integrante é dono de uma fatia e revisa os PRs dos outros |
 | `23P01` escapar como 500 | Técnico | `saveAndFlush` + teste de API exigindo 409 |
-| **Deadlock `40P01`** entre inserções conflitantes (ocorreu na Etapa 3) | Técnico | Lock do recurso antes da pré-checagem; teste de concorrência com 10 rodadas |
+| **Deadlock `40P01`** entre inserções conflitantes (ocorreu na Etapa 3) | Técnico | Lock do recurso antes da pré-checagem; teste de concorrência com 10 rodadas; com vários recursos, travamento em ordem crescente de id (testado com ordens opostas) |
 | Teste de concorrência instável | Técnico | `CountDownLatch` como portão de largada; N ≥ 10; verificar 1 resposta 201, N−1 respostas 409 e nenhum 500; teste repetido |
-| `inicio`/`fim` de `reserva` e `ocupacao` dessincronizados | Técnico | Atualizar tudo na mesma transação + teste de integração |
+| `inicio`/`fim` de `reserva` e `ocupacao` dessincronizados | Técnico | Atualizados juntos no domínio (`alterarPeriodo`), na mesma transação, com `@Version`; `AlteracaoHorarioIT` › Concorrência verifica no banco |
 | Testes dependem de Docker (Testcontainers) | Técnico | Docker Desktop em todas as máquinas; o runner do CI já tem Docker |
 | Gate de cobertura travar PRs | Técnico | Testar junto com cada funcionalidade |
 | Spring Boot 3.x no fim do suporte gratuito | Técnico | Manter a última versão 3.5.x; a disciplina exige 3.x |

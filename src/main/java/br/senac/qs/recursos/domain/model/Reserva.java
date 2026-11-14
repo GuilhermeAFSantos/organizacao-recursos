@@ -6,6 +6,7 @@ import static br.senac.qs.recursos.domain.model.StatusReserva.CONCLUIDA;
 import static br.senac.qs.recursos.domain.model.StatusReserva.EM_USO;
 import static br.senac.qs.recursos.domain.model.StatusReserva.NAO_COMPARECEU;
 import static br.senac.qs.recursos.domain.model.StatusReserva.REJEITADA;
+import static br.senac.qs.recursos.domain.model.StatusReserva.SOLICITADA;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import jakarta.persistence.Version;
 public class Reserva {
 
     static final String MOTIVO_APROVACAO_AUTOMATICA = "Nenhum recurso é restrito: aprovação automática.";
+    static final String MOTIVO_REAPROVACAO = "Horário alterado: a reserva precisa de nova aprovação.";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -79,8 +81,22 @@ public class Reserva {
     protected Reserva() {
     }
 
+    /** Reserva de um único recurso (atalho para a forma com lista). */
     public static Reserva solicitar(Usuario solicitante, Recurso recurso, PeriodoReserva periodo,
                                     String finalidade, Instant agora) {
+        return solicitar(solicitante, List.of(recurso), periodo, finalidade, agora);
+    }
+
+    /**
+     * Reserva de sala, professor e materiais juntos (RF04, RF05): tudo ou nada. Cada recurso
+     * ganha uma ocupação no mesmo período; a aprovação automática só vale se nenhum for restrito.
+     */
+    public static Reserva solicitar(Usuario solicitante, List<Recurso> recursos, PeriodoReserva periodo,
+                                    String finalidade, Instant agora) {
+        if (recursos.isEmpty()) {
+            throw new RegraNegocioException("Informe ao menos um recurso para reservar.");
+        }
+        recursos.forEach(Recurso::exigirReservavel);
         var reserva = new Reserva();
         reserva.solicitante = solicitante;
         reserva.periodo = periodo;
@@ -88,12 +104,59 @@ public class Reserva {
         reserva.status = StatusReserva.SOLICITADA;
         reserva.criadoEm = agora;
         reserva.atualizadoEm = agora;
-        reserva.ocupacoes.add(new Ocupacao(reserva, recurso, periodo));
+        recursos.forEach(recurso -> reserva.ocupacoes.add(new Ocupacao(reserva, recurso, periodo)));
         reserva.registrar(null, StatusReserva.SOLICITADA, solicitante.getId(), solicitante.getEmail(), null, agora);
-        if (!recurso.isRestrito()) {
+        if (!reserva.temRecursoRestrito()) {
             reserva.aprovarAutomaticamente(agora);
         }
         return reserva;
+    }
+
+    /**
+     * Muda o horário (RF04). Período e ocupações mudam juntos, na mesma transação. Se a reserva
+     * estava APROVADA e tem recurso restrito, volta a SOLICITADA: a aprovação valia para o horário
+     * antigo. É o único caminho que volta um estado, e fica auditado como ALTERACAO.
+     */
+    public void alterarPeriodo(Usuario autor, PeriodoReserva novo, Instant agora) {
+        exigirAlteravel(autor, novo, agora);
+        var periodoAnterior = this.periodo;
+        var estadoAnterior = this.status;
+        this.periodo = novo;
+        ocupacoes.forEach(ocupacao -> ocupacao.moverPara(novo));
+        this.atualizadoEm = agora;
+        if (status == APROVADA && temRecursoRestrito()) {
+            this.status = SOLICITADA;
+            this.aprovador = null;
+            this.motivoStatus = MOTIVO_REAPROVACAO;
+        }
+        var motivo = "Horário alterado de " + periodoAnterior.descrever() + " para " + novo.descrever() + ".";
+        mudancasPendentes.add(new MudancaDeEstado(MudancaDeEstado.ALTERACAO, estadoAnterior, status, autor.getId(),
+                autor.getEmail(), motivo, agora));
+    }
+
+    /**
+     * Verifica, SEM alterar nada, se a alteração é permitida. O caso de uso chama antes de consultar
+     * conflitos, para a consulta não gravar uma mudança ainda não validada. Ordem: quem pode →
+     * estado → horário atual → horário novo.
+     */
+    public void exigirAlteravel(Usuario autor, PeriodoReserva novo, Instant agora) {
+        if (!autor.mesmaPessoaQue(solicitante) && autor.getPerfil() != Perfil.ADMINISTRADOR) {
+            throw new OperacaoNaoPermitidaException(
+                    "Somente quem solicitou a reserva ou um ADMINISTRADOR pode alterá-la.");
+        }
+        if (status != SOLICITADA && status != APROVADA) {
+            throw new RegraNegocioException("Só é possível alterar o horário de reservas solicitadas ou aprovadas.");
+        }
+        if (!agora.isBefore(periodo.inicio())) {
+            throw new RegraNegocioException("O horário só pode ser alterado antes do início da reserva.");
+        }
+        if (!agora.isBefore(novo.inicio())) {
+            throw new RegraNegocioException("O novo horário deve começar no futuro.");
+        }
+    }
+
+    private boolean temRecursoRestrito() {
+        return ocupacoes.stream().anyMatch(ocupacao -> ocupacao.getRecurso().isRestrito());
     }
 
     /** D1: sem recurso restrito, não há quem precise aprovar; o sistema aprova e isso fica auditado. */

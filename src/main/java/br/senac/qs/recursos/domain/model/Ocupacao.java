@@ -72,6 +72,11 @@ public class Ocupacao {
         return bloqueio;
     }
 
+    /** Acompanha a alteração de horário da reserva (a ocupação é a mesma, só o período muda). */
+    void moverPara(PeriodoReserva novo) {
+        this.periodo = novo;
+    }
+
     /** Encurta o período, mantendo o início (bloqueio encerrado antes do previsto). */
     void encurtarAte(Instant novoFim) {
         this.periodo = new PeriodoReserva(periodo.inicio(), novoFim);

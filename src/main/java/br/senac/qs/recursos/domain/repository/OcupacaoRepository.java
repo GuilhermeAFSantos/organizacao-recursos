@@ -22,4 +22,18 @@ public interface OcupacaoRepository extends JpaRepository<Ocupacao, Long> {
               and o.periodo.fim > :inicio
             order by o.periodo.inicio""")
     List<Ocupacao> sobrepostas(Long recursoId, Instant inicio, Instant fim);
+
+    /**
+     * Reservas ativas (solicitadas, aprovadas ou em uso) do recurso que ainda não terminaram. Enquanto
+     * houver alguma, o recurso não pode ser desativado: quem reservou ficaria sem aviso.
+     */
+    @Query("""
+            select count(distinct o.reserva.id) from Ocupacao o
+            where o.recurso.id = :recursoId
+              and o.bloqueante = true
+              and o.reserva.status in (br.senac.qs.recursos.domain.model.StatusReserva.SOLICITADA,
+                                       br.senac.qs.recursos.domain.model.StatusReserva.APROVADA,
+                                       br.senac.qs.recursos.domain.model.StatusReserva.EM_USO)
+              and o.periodo.fim > :agora""")
+    long contarReservasAtivasNaoTerminadas(Long recursoId, Instant agora);
 }

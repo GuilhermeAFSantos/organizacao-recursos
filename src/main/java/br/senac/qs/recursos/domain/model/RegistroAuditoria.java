@@ -82,11 +82,22 @@ public class RegistroAuditoria {
         return registro;
     }
 
+    public static RegistroAuditoria doRecurso(Long recursoId, String acao, Usuario autor, Instant quando) {
+        var registro = new RegistroAuditoria();
+        registro.entidade = "RECURSO";
+        registro.entidadeId = recursoId;
+        registro.acao = acao;
+        registro.usuarioId = autor.getId();
+        registro.usuarioEmail = autor.getEmail();
+        registro.ocorridoEm = quando;
+        return registro;
+    }
+
     public static RegistroAuditoria daReserva(Long reservaId, MudancaDeEstado mudanca) {
         var registro = new RegistroAuditoria();
         registro.entidade = ENTIDADE_RESERVA;
         registro.entidadeId = reservaId;
-        registro.acao = mudanca.anterior() == null ? "CRIACAO" : "TRANSICAO";
+        registro.acao = mudanca.acao();
         registro.estadoAnterior = mudanca.anterior() == null ? null : mudanca.anterior().name();
         registro.estadoNovo = mudanca.novo().name();
         registro.motivo = mudanca.motivo();

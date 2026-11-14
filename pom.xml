@@ -150,15 +150,30 @@
             </plugin>
 
             <!--
-                Testes unitários (*Test): rápidos, sem Docker. Rodam na fase "test".
-                -XX:+EnableDynamicAgentLoading evita o aviso do Java 21 quando o Mockito
-                se anexa dinamicamente à JVM.
+                Expõe o caminho do jar do Mockito na propriedade ${org.mockito:mockito-core:jar},
+                para carregá-lo como -javaagent nas JVMs de teste (abaixo). É a configuração
+                recomendada pelo Mockito para Java 21+: sem ela, o Mockito se anexa à JVM em tempo
+                de execução, o que é intermitente no Windows ("Could not self-attach to current VM")
+                e será bloqueado por padrão em versões futuras do Java.
             -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Testes unitários (*Test): rápidos, sem Docker. Rodam na fase "test". -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>
             </plugin>
 
@@ -170,7 +185,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>
                 <executions>
                     <execution>

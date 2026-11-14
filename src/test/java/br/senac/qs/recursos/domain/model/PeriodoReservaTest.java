@@ -107,6 +107,27 @@ class PeriodoReservaTest {
         }
     }
 
+    @Nested
+    @DisplayName("Descrição para mensagens (horário de Brasília)")
+    class Descricao {
+
+        @Test
+        @DisplayName("no mesmo dia: data uma vez só")
+        void mesmoDia() {
+            var periodo = new PeriodoReserva(instante("2026-12-01T10:00-03:00"), instante("2026-12-01T12:00-03:00"));
+
+            assertThat(periodo.descrever()).isEqualTo("01/12/2026 10:00–12:00");
+        }
+
+        @Test
+        @DisplayName("virando o dia: as duas datas; o instante em UTC é exibido no horário local")
+        void viraODia() {
+            var periodo = new PeriodoReserva(instante("2026-12-02T01:00:00Z"), instante("2026-12-02T04:00:00Z"));
+
+            assertThat(periodo.descrever()).isEqualTo("01/12/2026 22:00–02/12/2026 01:00");
+        }
+    }
+
     static Instant instante(String isoComFuso) {
         return OffsetDateTime.parse(isoComFuso).toInstant();
     }

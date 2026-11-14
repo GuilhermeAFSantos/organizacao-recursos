@@ -29,15 +29,18 @@ ArchUnit · JaCoCo · SonarCloud · GitHub Actions.
 
 | Métrica | Meta | Atual |
 |---|---|---|
-| Cobertura de linhas (JaCoCo) | ≥ 80% | **98,2%** |
-| Cobertura de branches (JaCoCo) | ≥ 70% | **93,3%** |
+| Cobertura de linhas (JaCoCo) | ≥ 80% | **98,5%** |
+| Cobertura de branches (JaCoCo) | ≥ 70% | **93,6%** |
 | Bugs / vulnerabilidades (SonarCloud) | 0 | **0 / 0** |
 | Requisitos críticos (RC) na RTM | 100% | **100%** (8 de 8 rastreados) |
 
-Funcionalidades prontas: login com JWT, bloqueio após 5 senhas erradas e gestão de usuários (RF01); criação de reserva de sala
-com as regras RC01, RC02 e RC03; aprovação automática de recurso não restrito; aprovação, rejeição,
+Funcionalidades prontas: login com JWT, bloqueio após 5 senhas erradas e gestão de usuários (RF01);
+cadastro de salas, professores e materiais com desativação (RF02); pesquisa por tipo, capacidade,
+localização, competência e disponibilidade (RF03); reserva de sala com professor e materiais, tudo ou
+nada, com conflito também na agenda do professor (RF04, RF05), e alteração de horário (RF04), com as
+regras RC01, RC02 e RC03; aprovação automática de recurso não restrito; aprovação, rejeição,
 cancelamento, início de uso, não comparecimento e conclusão com a máquina de estados (RC05, RC06,
-RC07) e auditoria de cada mudança (RC08); manutenção e bloqueios com encerramento antecipado (RF08,
+RC07) e auditoria de cada mudança de reservas, bloqueios, usuários e recursos (RC08, RF10); manutenção e bloqueios com encerramento antecipado (RF08,
 RC04); horários em minutos cheios; tratamento de erros em
 ProblemDetail e Swagger. O restante está na [RTM](RTM.md), com status por requisito.
 
@@ -73,7 +76,9 @@ curl -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/
 ```
 
 Use o `token` devolvido no cabeçalho `Authorization: Bearer …` (ou no botão "Authorize" do Swagger).
-O administrador cadastra os demais usuários em `POST /api/usuarios`.
+O administrador cadastra os demais usuários em `POST /api/usuarios` e os recursos em
+`POST /api/salas`, `/api/professores` e `/api/materiais`; qualquer usuário logado pesquisa em
+`GET /api/recursos` (ex.: `?tipoSala=LABORATORIO&capacidadeMinima=30&inicio=…&fim=…`).
 
 > **Se a aplicação não subir:** confira se o `.env` tem `DB_PASSWORD` e `JWT_SECRET` (com pelo menos
 > 32 bytes). Se você mudou a senha depois de subir o banco, recrie o volume com
@@ -99,23 +104,23 @@ O administrador cadastra os demais usuários em `POST /api/usuarios`.
 
 | Tipo | Classes | O que provam |
 |---|---|---|
-| Unidade | `PeriodoReservaTest`, `StatusReservaTest`, `ReservaTest`, `BloqueioTest`, `UsuarioTest`, `MinutoCheioValidatorTest`, `SenhaForteValidatorTest`, `GarantirPrimeiroAdministradorTest`, `CriarReservaSalaTest`, `JwtPropertiesTest`, `TipoProblemaTest` | Regras puras (RC01, RC02, matriz de 49 transições, perfis, horários, auditoria), tradução de erros do banco, configuração |
+| Unidade | `PeriodoReservaTest`, `StatusReservaTest`, `ReservaTest`, `BloqueioTest`, `UsuarioTest`, `CadastroRecursosTest`, `ReservaComVariosRecursosTest`, `AlteracaoReservaTest`, `MinutoCheioValidatorTest`, `SenhaForteValidatorTest`, `GarantirPrimeiroAdministradorTest`, `CriarReservaTest`, `JwtPropertiesTest`, `TipoProblemaTest` | Regras puras (RC01, RC02, matriz de 49 transições, perfis, horários, auditoria), tradução de erros do banco, configuração |
 | Web (MockMvc) | `GlobalExceptionHandlerTest` | Contrato de erros ProblemDetail, sem vazar detalhes internos |
 | Arquitetura | `ArquiteturaTest` (ArchUnit) | Dependências entre camadas |
 | Integração (banco) | `EsquemaBancoIT` | Constraints e triggers do schema no PostgreSQL real |
-| API (caixa-preta) | `LoginIT`, `UsuariosIT`, `CriarReservaSalaIT`, `TransicoesReservaIT`, `BloqueiosIT`, `AplicacaoIT` | HTTP + JWT + banco reais, ponta a ponta, incluindo aprovar × cancelar e reserva × manutenção simultâneos |
-| Ponta a ponta | `FluxoCompletoIT` | Do primeiro login do administrador à reserva concluída, ao bloqueio e à trilha de auditoria |
-| Concorrência | `ReservaConcorrenciaIT` | RC03: 20 requisições simultâneas × 10 rodadas → exatamente 1 reserva |
+| API (caixa-preta) | `LoginIT`, `UsuariosIT`, `CadastroRecursosIT`, `PesquisaRecursosIT`, `CriarReservaSalaIT`, `ReservaComVariosRecursosIT`, `AlteracaoHorarioIT`, `TransicoesReservaIT`, `BloqueiosIT`, `AplicacaoIT` | HTTP + JWT + banco reais, ponta a ponta, incluindo aprovar × cancelar e reserva × manutenção simultâneos |
+| Ponta a ponta | `FluxoCompletoIT` | Do primeiro login do administrador ao cadastro e à pesquisa da sala, à reserva concluída, ao bloqueio e à trilha de auditoria |
+| Concorrência | `ReservaConcorrenciaIT`, `ReservaComVariosRecursosIT`, `AlteracaoHorarioIT` | RC03: 20 requisições simultâneas × 10 rodadas → exatamente 1 reserva; o mesmo professor pedido por 10 salas → 1; materiais em ordens opostas sem deadlock; alterações simultâneas sem dessincronizar |
 
 ## Estrutura
 
 ```
 src/main/java/br/senac/qs/recursos
-├── domain           regras de negócio (entidades, value objects, repositórios, exceções)
+├── domain           regras de negócio (entidades, value objects, repositórios, critérios de pesquisa, exceções)
 ├── application      casos de uso transacionais
 ├── infrastructure   configuração e segurança (JWT)
 └── web              controllers REST, DTOs e tratamento de erros
-src/main/resources/db/migration   migrations Flyway (V1 schema, V2 RC07)
+src/main/resources/db/migration   migrations Flyway (V1 schema, V2 RC07, V3 login, V4 nome de sala)
 ```
 
 As dependências entre camadas são verificadas no build pelo `ArquiteturaTest`. Detalhes em
