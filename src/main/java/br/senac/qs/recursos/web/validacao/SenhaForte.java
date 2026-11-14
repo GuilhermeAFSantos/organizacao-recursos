@@ -19,8 +19,6 @@ import jakarta.validation.Payload;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface SenhaForte {
 
-    int TAMANHO_MINIMO = 8;
-
     String message() default "deve ter pelo menos 8 caracteres, com letras e números";
 
     Class<?>[] groups() default {};
