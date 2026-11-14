@@ -40,6 +40,14 @@ public class SecurityConfig {
         "/error"
     };
 
+    /*
+     * SonarCloud java:S4502 ("CSRF desabilitado") analisado e considerado SEGURO aqui:
+     * a API é stateless e não usa cookie de autenticação; o JWT só viaja no cabeçalho Authorization,
+     * que o navegador não anexa sozinho a requisições forjadas por outro site.
+     * Evidência automatizada: AplicacaoIT#naoCriaSessaoNemCookie.
+     * Se um dia a autenticação passar a usar cookie, a proteção CSRF DEVE ser reativada.
+     */
+    @SuppressWarnings("java:S4502")
     @Bean
     SecurityFilterChain filtroSeguranca(HttpSecurity http, ProblemDetailSecurityHandler respostasDeErro)
             throws Exception {
