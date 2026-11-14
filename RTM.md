@@ -19,7 +19,7 @@ Testes citados como `Classe › Grupo` referem-se aos `@Nested`/`@DisplayName` d
 
 | Grupo | Total | ✅ | 🟡 | ⏳ |
 |---|---|---|---|---|
-| Requisitos funcionais (RF) | 14 | 10 | 1 | 3 |
+| Requisitos funcionais (RF) | 14 | 11 | 1 | 2 |
 | Regras críticas (RC) | 8 | 8 | 0 | 0 |
 | Não funcionais e metas (RNF) | 8 | 7 | 0 | 1 |
 
@@ -51,7 +51,7 @@ Os 8 requisitos críticos estão **todos rastreados e cobertos** por testes (met
 | **RF06** Proteção contra dupla reserva em solicitações simultâneas | Ver RC03 | Ver RC03 | Ver RC03 | ✅ |
 | **RF07** Aprovação obrigatória para recursos restritos | Uso de laboratório ou professor sem autorização | `ReservaTest` › AP-01/AP-03 (aprovação automática só sem recurso restrito), Aprovação, Rejeição; `CriarReservaSalaIT` › AP-01, AP-02; `TransicoesReservaIT` › AP-04 a AP-07 | [`ebb9015`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/ebb9015) → [`b8ec127`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/b8ec127); [`e1f6f44`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/e1f6f44) → [`14366b9`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/14366b9) | ✅ |
 | **RF08** Bloqueio de recursos em manutenção | Ver RC04 | Ver RC04 | Ver RC04 | ✅ (manutenção e bloqueio administrativo; encerramento antecipado) |
-| **RF09** Registro de retirada e devolução de materiais | Equipamento sem responsável; dano não registrado | — | Tabela `movimentacao_material` (V1) | ⏳ |
+| **RF09** Registro de retirada e devolução de materiais | Equipamento sem responsável; dano não registrado | [`MovimentacaoMaterialTest`](src/test/java/br/senac/qs/recursos/domain/model/MovimentacaoMaterialTest.java) (perfis, material da reserva, estados da reserva, item já retirado ou com outra reserva, danificado, dano exige observação, prazo com fronteira de 1 minuto); [`RetiradaDevolucaoIT`](src/test/java/br/senac/qs/recursos/web/material/RetiradaDevolucaoIT.java) (fluxo com pendências e histórico, dano torna o material não reservável, pendência atrasada, 403/404/422/400, histórico imutável por SQL direto, 5 retiradas simultâneas → 1) | Migration V5 (somente inserção); TDD: [`99eb967`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/99eb967) → [`29d2f25`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/29d2f25), [`30e96c7`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/30e96c7) → [`5339158`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/5339158) | ✅ |
 | **RF10** Histórico auditável de mudanças | Ver RC08 | Ver RC08; `UsuariosIT` (auditoria de usuários); `CadastroRecursosIT` (CRIACAO, ALTERACAO, DESATIVACAO e REATIVACAO de recursos, com o autor) | Ver RC08 | ✅ (reservas, bloqueios, usuários e recursos: toda entidade que muda é auditada) |
 | **RF11** Notificação simulada ou integração externa (WireMock nos testes) | Falha externa desfazer a reserva; usuário não avisado | — | Dependência WireMock no `pom.xml`; decisão D9 em [arquitetura](docs/arquitetura.md) | ⏳ |
 | **RF12** Relatório de utilização, carga horária e conflitos evitados | Indicadores errados para gestão | — | Tabela `conflito_evitado` (V1) | ⏳ |
@@ -66,7 +66,7 @@ Os 8 requisitos críticos estão **todos rastreados e cobertos** por testes (met
 | **RNF02** 0 bugs e 0 vulnerabilidades críticas | Falhas de segurança e confiabilidade | SonarCloud com Quality Gate no CI | 0 bugs / 0 vulnerabilidades; correções [`838e75a`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/838e75a) (S4502) e [`76f159f`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/76f159f) (S6437) | ✅ |
 | **RNF03** Validação de entrada | Dados malformados; *mass assignment* | `GlobalExceptionHandlerTest` › Validação de entrada; `CriarReservaSalaIT` (campos obrigatórios, horário sem fuso, campo `status` proibido); `PesquisaRecursosIT` (filtros da query string inválidos, falha de conversão respondida em português) | Relatórios do CI | ✅ |
 | **RNF04** Tratamento seguro de erros (ProblemDetail, RFC 9457, sem stack trace) | Vazamento de SQL, classes ou segredos | `GlobalExceptionHandlerTest` › Erro inesperado e Persistência | Relatórios do CI | ✅ |
-| **RNF05** Autorização por perfil | Escalada de privilégio | Ver RF01 e RC06 (403 testado por perfil em reservas, transições, bloqueios, usuários e cadastro de recursos) | Ver RF01 | ✅ |
+| **RNF05** Autorização por perfil | Escalada de privilégio | Ver RF01 e RC06 (403 testado por perfil em reservas, transições, bloqueios, usuários, cadastro de recursos e movimentação de materiais) | Ver RF01 | ✅ |
 | **RNF06** Desempenho sob carga (JMeter) | Degradação ou erros com muitos usuários | — | — | ⏳ |
 | **RNF07** Arquitetura em camadas respeitada | Regras de negócio acopladas a HTTP ou banco | [`ArquiteturaTest`](src/test/java/br/senac/qs/recursos/ArquiteturaTest.java) (ArchUnit) | Relatórios do CI; a regra barrou o build quando o filtro de pesquisa ficou em `domain.repository` e a camada web passou a depender dele (corrigido antes do commit, ver [`ce2bb11`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/ce2bb11)) | ✅ |
 | **RNF08** Segredos fora do código | Credenciais expostas no repositório | SonarCloud java:S6437; `.env` fora do git | [`76f159f`](https://github.com/GuilhermeAFSantos/organizacao-recursos/commit/76f159f) | ✅ |
