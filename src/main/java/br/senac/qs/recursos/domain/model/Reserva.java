@@ -146,7 +146,7 @@ public class Reserva {
         if (status != SOLICITADA && status != APROVADA) {
             throw new RegraNegocioException("Só é possível alterar o horário de reservas solicitadas ou aprovadas.");
         }
-        if (!agora.isBefore(periodo.inicio())) {
+        if (jaComecou(agora)) {
             throw new RegraNegocioException("O horário só pode ser alterado antes do início da reserva.");
         }
         if (!agora.isBefore(novo.inicio())) {
@@ -164,6 +164,11 @@ public class Reserva {
         mudarPara(APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA, MOTIVO_APROVACAO_AUTOMATICA, agora);
     }
 
+    /** O horário reservado já começou (ou passou) neste instante? */
+    private boolean jaComecou(Instant agora) {
+        return !agora.isBefore(periodo.inicio());
+    }
+
     /** O recurso faz parte desta reserva? Compara por id: o recurso da ocupação pode ser um proxy. */
     public boolean incluiRecurso(Recurso recurso) {
         return ocupacoes.stream().map(Ocupacao::getRecurso)
@@ -173,7 +178,7 @@ public class Reserva {
     public void aprovar(Usuario responsavel, Instant agora) {
         exigirResponsavel(responsavel, "aprovar");
         proibirDecisaoSobreAPropria(responsavel);
-        if (!agora.isBefore(periodo.inicio())) {
+        if (jaComecou(agora)) {
             throw new RegraNegocioException("A reserva só pode ser aprovada antes do horário de início.");
         }
         this.aprovador = responsavel;
