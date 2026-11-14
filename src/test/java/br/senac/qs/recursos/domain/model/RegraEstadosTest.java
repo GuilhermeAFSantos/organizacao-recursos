@@ -6,8 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Instant;
 import java.util.List;
 
+import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
 import br.senac.qs.recursos.domain.exception.TransicaoInvalidaException;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -23,6 +25,7 @@ class RegraEstadosTest {
     static final Instant FIM = Instant.parse("2026-12-01T13:00:00Z");
 
     final Usuario ana = new Usuario("ana@senac.br", Perfil.SOLICITANTE);
+    final Usuario bruno = new Usuario("bruno@senac.br", Perfil.SOLICITANTE);
     final Usuario rita = new Usuario("rita@senac.br", Perfil.RESPONSAVEL);
     final Usuario adm = new Usuario("adm@senac.br", Perfil.ADMINISTRADOR);
     final Sala laboratorio = new Sala("Laboratório 3", true);
@@ -80,6 +83,17 @@ class RegraEstadosTest {
 
         assertThat(reserva.getStatus()).isEqualTo(de);
         assertThat(reserva.retirarMudancas()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("ES-03: outro solicitante não cancela reserva alheia, que continua APROVADA")
+    void outroSolicitanteNaoCancelaReservaAlheia() {
+        var reserva = reservaNoEstado(StatusReserva.APROVADA);
+
+        assertThatThrownBy(() -> reserva.cancelar(bruno, null, ANTES)).isInstanceOf(OperacaoNaoPermitidaException.class)
+                .hasMessage("Somente quem solicitou a reserva ou um ADMINISTRADOR pode cancelá-la.");
+
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.APROVADA);
     }
 
     /** Leva a reserva ao estado pedido pelos caminhos permitidos e descarta as mudanças até ali. */
