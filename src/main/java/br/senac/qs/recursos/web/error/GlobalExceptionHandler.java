@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+import br.senac.qs.recursos.domain.exception.CadastroDuplicadoException;
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.exception.CredenciaisInvalidasException;
 import br.senac.qs.recursos.domain.exception.MuitasTentativasException;
@@ -87,6 +88,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     ResponseEntity<ProblemDetail> naoEncontrado(RecursoNaoEncontradoException ex, HttpServletRequest req) {
         return responder(TipoProblema.NAO_ENCONTRADO.criar(ex.getMessage(), req.getRequestURI(), clock));
+    }
+
+    @ExceptionHandler(CadastroDuplicadoException.class)
+    ResponseEntity<ProblemDetail> cadastroDuplicado(CadastroDuplicadoException ex, HttpServletRequest req) {
+        return responder(TipoProblema.VIOLACAO_INTEGRIDADE.criar(ex.getMessage(), req.getRequestURI(), clock));
     }
 
     @ExceptionHandler(CredenciaisInvalidasException.class)

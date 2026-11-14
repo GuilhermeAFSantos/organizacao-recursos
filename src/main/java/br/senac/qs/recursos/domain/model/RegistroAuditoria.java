@@ -70,6 +70,18 @@ public class RegistroAuditoria {
         return registro;
     }
 
+    /** Mudança em cadastro de usuário (CRIACAO, DESATIVACAO, SENHA_REDEFINIDA, SENHA_ALTERADA). Nunca guarda senha. */
+    public static RegistroAuditoria doUsuario(Long usuarioAlvoId, String acao, Usuario autor, Instant quando) {
+        var registro = new RegistroAuditoria();
+        registro.entidade = "USUARIO";
+        registro.entidadeId = usuarioAlvoId;
+        registro.acao = acao;
+        registro.usuarioId = autor.getId();
+        registro.usuarioEmail = autor.getEmail();
+        registro.ocorridoEm = quando;
+        return registro;
+    }
+
     public static RegistroAuditoria daReserva(Long reservaId, MudancaDeEstado mudanca) {
         var registro = new RegistroAuditoria();
         registro.entidade = ENTIDADE_RESERVA;
