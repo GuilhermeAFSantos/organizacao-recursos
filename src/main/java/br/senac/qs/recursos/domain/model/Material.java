@@ -1,5 +1,6 @@
 package br.senac.qs.recursos.domain.model;
 
+import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
@@ -56,6 +57,21 @@ public class Material extends Recurso {
     @Override
     public TipoRecurso getTipo() {
         return TipoRecurso.MATERIAL;
+    }
+
+    /** O patrimônio identifica o item: dois projetores podem ter o mesmo nome. */
+    @Override
+    public String getNomeParaExibicao() {
+        return getNome() + " (" + patrimonio + ")";
+    }
+
+    /** Além de ativo, o item não pode estar danificado. */
+    @Override
+    public void exigirReservavel() {
+        super.exigirReservavel();
+        if (estadoConservacao == EstadoConservacao.DANIFICADO) {
+            throw new RegraNegocioException(identificacao() + " está danificado e não pode ser reservado.");
+        }
     }
 
     public String getPatrimonio() {

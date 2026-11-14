@@ -87,6 +87,24 @@ public abstract class Recurso {
         return valor;
     }
 
+    /** Nome usado nas mensagens ao usuário. */
+    public String getNomeParaExibicao() {
+        return nome;
+    }
+
+    /** Ex.: "A sala Sala 101". */
+    public String identificacao() {
+        return getTipo().identificar(getNomeParaExibicao());
+    }
+
+    /** Só recurso ativo aceita reservas. */
+    public void exigirReservavel() {
+        if (!ativo) {
+            throw new RegraNegocioException(identificacao() + " está " + getTipo().concordar("desativado")
+                    + " e não aceita reservas.");
+        }
+    }
+
     public Long getId() {
         return id;
     }
