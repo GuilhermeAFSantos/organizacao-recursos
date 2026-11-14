@@ -41,6 +41,13 @@ class RegraAprovacaoTest {
         return Reserva.solicitar(ana, List.of(recursos), PERIODO, "Aula", AGORA);
     }
 
+    /** Reserva do laboratório (restrito) aguardando aprovação, sem a mudança de criação pendente. */
+    Reserva laboratorioSolicitado() {
+        var reserva = solicitar(laboratorio);
+        reserva.retirarMudancas();
+        return reserva;
+    }
+
     @Test
     @DisplayName("AP-01: reserva só com recursos não restritos nasce APROVADA pelo sistema")
     void reservaSoComRecursosNaoRestritosNasceAprovadaPeloSistema() {
@@ -75,8 +82,7 @@ class RegraAprovacaoTest {
     @Test
     @DisplayName("AP-04: RESPONSAVEL aprova reserva de recurso restrito: APROVADA, com aprovador e mudança registrada")
     void responsavelAprovaReservaDeRecursoRestrito() {
-        var reserva = solicitar(laboratorio);
-        reserva.retirarMudancas();
+        var reserva = laboratorioSolicitado();
 
         reserva.aprovar(rita, AGORA);
 
@@ -93,8 +99,7 @@ class RegraAprovacaoTest {
     @ValueSource(strings = {"aprovar", "rejeitar"})
     @DisplayName("AU-01: a dona da reserva, com perfil SOLICITANTE, não decide sobre ela e nada muda")
     void donaComPerfilSolicitanteNaoDecideSobreAPropriaReserva(String acao) {
-        var reserva = solicitar(laboratorio);
-        reserva.retirarMudancas();
+        var reserva = laboratorioSolicitado();
 
         assertThatThrownBy(() -> decidir(reserva, acao, ana)).isInstanceOf(OperacaoNaoPermitidaException.class);
 
@@ -132,8 +137,7 @@ class RegraAprovacaoTest {
     @Test
     @DisplayName("AP-06: RESPONSAVEL rejeita com motivo: REJEITADA, motivo registrado e horário liberado")
     void responsavelRejeitaComMotivoEOHorarioELiberado() {
-        var reserva = solicitar(laboratorio);
-        reserva.retirarMudancas();
+        var reserva = laboratorioSolicitado();
 
         reserva.rejeitar(rita, "Laboratório reservado para prova", AGORA);
 
