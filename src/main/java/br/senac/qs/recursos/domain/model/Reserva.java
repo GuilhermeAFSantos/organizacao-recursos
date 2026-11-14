@@ -161,9 +161,7 @@ public class Reserva {
 
     /** D1: sem recurso restrito, não há quem precise aprovar; o sistema aprova e isso fica auditado. */
     private void aprovarAutomaticamente(Instant agora) {
-        this.status = APROVADA;
-        this.motivoStatus = MOTIVO_APROVACAO_AUTOMATICA;
-        registrar(SOLICITADA, APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA, MOTIVO_APROVACAO_AUTOMATICA, agora);
+        mudarPara(APROVADA, null, MudancaDeEstado.AUTOR_SISTEMA, MOTIVO_APROVACAO_AUTOMATICA, agora);
     }
 
     /** O recurso faz parte desta reserva? Compara por id: o recurso da ocupação pode ser um proxy. */
@@ -173,10 +171,8 @@ public class Reserva {
     }
 
     public void aprovar(Usuario responsavel, Instant agora) {
-        this.status = APROVADA;
         this.aprovador = responsavel;
-        this.atualizadoEm = agora;
-        registrar(SOLICITADA, APROVADA, responsavel.getId(), responsavel.getEmail(), null, agora);
+        mudarPara(APROVADA, responsavel.getId(), responsavel.getEmail(), null, agora);
     }
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
@@ -203,6 +199,15 @@ public class Reserva {
         var retiradas = List.copyOf(mudancasPendentes);
         mudancasPendentes.clear();
         return retiradas;
+    }
+
+    /** Muda o estado e registra a mudança para a auditoria (RC08), sempre do mesmo jeito. */
+    private void mudarPara(StatusReserva novo, Long autorId, String autorEmail, String motivo, Instant agora) {
+        var anterior = status;
+        this.status = novo;
+        this.motivoStatus = motivo;
+        this.atualizadoEm = agora;
+        registrar(anterior, novo, autorId, autorEmail, motivo, agora);
     }
 
     private void registrar(StatusReserva anterior, StatusReserva novo, Long autorId, String autorEmail,
