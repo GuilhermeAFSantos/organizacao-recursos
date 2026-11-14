@@ -23,6 +23,7 @@ class RegraAprovacaoTest {
 
     final Usuario ana = new Usuario("ana@senac.br", Perfil.SOLICITANTE);
     final Sala sala101 = new Sala("Sala 101", false);
+    final Sala laboratorio = new Sala("Laboratório 3", true);
 
     @Test
     @DisplayName("AP-01: reserva só com recursos não restritos nasce APROVADA pelo sistema")
@@ -35,5 +36,14 @@ class RegraAprovacaoTest {
                 .containsExactly(
                         tuple(StatusReserva.SOLICITADA, "ana@senac.br"),
                         tuple(StatusReserva.APROVADA, MudancaDeEstado.AUTOR_SISTEMA));
+    }
+
+    @Test
+    @DisplayName("AP-02: reserva com recurso restrito fica SOLICITADA e já segura o horário")
+    void reservaComRecursoRestritoFicaSolicitadaESeguraOHorario() {
+        var reserva = Reserva.solicitar(ana, List.of(laboratorio), PERIODO, "Aula", AGORA);
+
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
+        assertThat(reserva.getOcupacoes()).singleElement().satisfies(o -> assertThat(o.isBloqueante()).isTrue());
     }
 }
