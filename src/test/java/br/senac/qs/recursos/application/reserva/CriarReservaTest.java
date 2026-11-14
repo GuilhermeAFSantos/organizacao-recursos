@@ -1,9 +1,12 @@
 package br.senac.qs.recursos.application.reserva;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.SQLException;
@@ -17,11 +20,14 @@ import java.util.Set;
 import br.senac.qs.recursos.application.UsuarioDoToken;
 import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.model.Reserva;
+import br.senac.qs.recursos.domain.model.ConflitoEvitado;
+import br.senac.qs.recursos.domain.model.OrigemConflito;
 import br.senac.qs.recursos.domain.model.Perfil;
 import br.senac.qs.recursos.domain.model.Professor;
 import br.senac.qs.recursos.domain.model.Sala;
 import br.senac.qs.recursos.domain.model.TipoSala;
 import br.senac.qs.recursos.domain.model.Usuario;
+import br.senac.qs.recursos.domain.repository.ConflitoEvitadoRepository;
 import br.senac.qs.recursos.domain.repository.MaterialRepository;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
 import br.senac.qs.recursos.domain.repository.ProfessorRepository;
@@ -33,7 +39,9 @@ import br.senac.qs.recursos.domain.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Teste de UNIDADE isolado (mocks permitidos aqui): reproduz de forma determinística o que, no
@@ -57,9 +65,13 @@ class CriarReservaTest {
     ProfessorRepository professores = mock(ProfessorRepository.class);
     MaterialRepository materiais = mock(MaterialRepository.class);
 
+    Clock clock = Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC);
+    ConflitoEvitadoRepository conflitosEvitados = mock(ConflitoEvitadoRepository.class);
+
+    /** Transações simuladas: o teste é sobre a tradução do erro e o registro do conflito, não sobre o banco. */
     CriarReserva casoDeUso = new CriarReserva(new UsuarioDoToken(usuarios), new AgendaDeRecursos(recursos, ocupacoes),
             salas, professores, materiais, reservas, new HistoricoDaReserva(auditoria, evento -> { }),
-            Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC));
+            new RegistrarConflitoEvitado(mock(PlatformTransactionManager.class), conflitosEvitados, clock), clock);
 
     CriarReservaComando comando = new CriarReservaComando("ana@senac.br", 7L, null, List.of(), INICIO, FIM, "Aula");
 
@@ -86,6 +98,11 @@ class CriarReservaTest {
         assertThatThrownBy(() -> casoDeUso.executar(comando))
                 .isInstanceOf(ConflitoHorarioException.class)
                 .hasMessage("A sala Sala 101 já está ocupada nesse horário. Escolha outro horário ou outra sala.");
+        assertThat(conflitoRegistrado()).as("RF12: a recusa do banco também é conflito evitado, com origem BANCO")
+                .satisfies(c -> {
+                    assertThat(c.getOrigem()).isEqualTo(OrigemConflito.BANCO);
+                    assertThat(c.getPeriodo().inicio()).isEqualTo(INICIO);
+                });
     }
 
     @Test
@@ -99,6 +116,7 @@ class CriarReservaTest {
                 new CriarReservaComando("ana@senac.br", 7L, 8L, List.of(), INICIO, FIM, "Aula")))
                 .isInstanceOf(ConflitoHorarioException.class)
                 .hasMessage("Um dos recursos já está ocupado nesse horário. Escolha outro horário.");
+        assertThat(conflitoRegistrado().getRecursoId()).as("o banco não diz qual recurso conflitou").isNull();
     }
 
     @Test
@@ -108,6 +126,13 @@ class CriarReservaTest {
 
         assertThatThrownBy(() -> casoDeUso.executar(comando))
                 .isInstanceOf(DataIntegrityViolationException.class);
+        verify(conflitosEvitados, never()).save(any());
+    }
+
+    ConflitoEvitado conflitoRegistrado() {
+        var captor = ArgumentCaptor.forClass(ConflitoEvitado.class);
+        verify(conflitosEvitados).save(captor.capture());
+        return captor.getValue();
     }
 
     /**

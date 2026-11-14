@@ -10,13 +10,13 @@ import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
 import br.senac.qs.recursos.domain.model.PeriodoReserva;
 import br.senac.qs.recursos.domain.model.Recurso;
 import br.senac.qs.recursos.domain.model.Reserva;
+import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.MaterialRepository;
 import br.senac.qs.recursos.domain.repository.ProfessorRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import br.senac.qs.recursos.domain.repository.SalaRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Caso de uso: um SOLICITANTE reserva uma sala, opcionalmente com professor e materiais (RF04, RF05).
@@ -38,12 +38,13 @@ public class CriarReserva {
     private final MaterialRepository materiais;
     private final ReservaRepository reservas;
     private final HistoricoDaReserva historico;
+    private final RegistrarConflitoEvitado conflitos;
     private final Clock clock;
 
     @SuppressWarnings("java:S107") // um repositório por tipo de recurso: juntar esconderia de onde vem cada um
     public CriarReserva(UsuarioDoToken usuarioDoToken, AgendaDeRecursos agenda, SalaRepository salas,
                         ProfessorRepository professores, MaterialRepository materiais, ReservaRepository reservas,
-                        HistoricoDaReserva historico, Clock clock) {
+                        HistoricoDaReserva historico, RegistrarConflitoEvitado conflitos, Clock clock) {
         this.usuarioDoToken = usuarioDoToken;
         this.agenda = agenda;
         this.salas = salas;
@@ -51,19 +52,27 @@ public class CriarReserva {
         this.materiais = materiais;
         this.reservas = reservas;
         this.historico = historico;
+        this.conflitos = conflitos;
         this.clock = clock;
     }
 
-    @Transactional
+    /**
+     * A transação é aberta por {@link RegistrarConflitoEvitado}: se a reserva for recusada por
+     * sobreposição, o conflito evitado (RF12) é gravado depois de a transação terminar.
+     */
     public ReservaResumo executar(CriarReservaComando comando) {
+        return conflitos.executarRegistrandoConflito(() -> criar(comando));
+    }
+
+    private ReservaResumo criar(CriarReservaComando comando) {
         var periodo = new PeriodoReserva(comando.inicio(), comando.fim());
         var solicitante = usuarioDoToken.ativo(comando.emailSolicitante());
         agenda.travarEmOrdem(idsDosRecursos(comando));
         var recursos = carregar(comando);
 
         var reserva = Reserva.solicitar(solicitante, recursos, periodo, comando.finalidade(), clock.instant());
-        agenda.garantirLivre(recursos, periodo, null);
-        var gravada = gravar(reserva, recursos);
+        agenda.garantirLivre(recursos, periodo, null, solicitante);
+        var gravada = gravar(reserva, recursos, solicitante);
         historico.registrar(gravada);
         return ReservaResumo.de(gravada);
     }
@@ -100,12 +109,12 @@ public class CriarReserva {
      * Barreira definitiva: a constraint de exclusão. {@code saveAndFlush} força o INSERT agora, para
      * a recusa (23P01) surgir aqui, onde ainda dá para traduzi-la em mensagem de negócio.
      */
-    private Reserva gravar(Reserva reserva, List<Recurso> recursos) {
+    private Reserva gravar(Reserva reserva, List<Recurso> recursos, Usuario solicitante) {
         try {
             return reservas.saveAndFlush(reserva);
         } catch (DataIntegrityViolationException e) {
             if (ViolacaoDeExclusao.causou(e)) {
-                throw agenda.conflitoNoBanco(recursos);
+                throw agenda.conflitoNoBanco(recursos, reserva.getPeriodo(), solicitante);
             }
             throw e; // outra violação (FK, CHECK...) não é conflito de horário: não mascarar
         }
