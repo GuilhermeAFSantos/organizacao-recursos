@@ -53,6 +53,20 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
+      # Chromium do Playwright para o teste da interface no navegador (InterfaceNavegadorIT).
+      # O navegador fica em cache entre execuções; as bibliotecas do sistema são instaladas sempre.
+      - name: Cache do navegador do Playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pom.xml') }}
+
+      - name: Navegador para o teste da interface (Playwright)
+        run: >
+          ./mvnw -B -ntp -q org.codehaus.mojo:exec-maven-plugin:3.6.4:java
+          -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.classpathScope=test
+          -Dexec.args="install --with-deps chromium"
+
       # O runner ubuntu-latest já tem Docker, que o Testcontainers usa para subir o PostgreSQL.
       - name: Build, testes e verificação de cobertura (falha abaixo de 80% linhas / 70% branches)
         run: ./mvnw -B -ntp verify

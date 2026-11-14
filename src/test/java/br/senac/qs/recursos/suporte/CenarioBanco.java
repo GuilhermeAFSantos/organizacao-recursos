@@ -51,6 +51,15 @@ public class CenarioBanco {
         return id;
     }
 
+    /** Sala com bloco e nome escolhidos pelo teste (o bloco único isola a pesquisa dos dados de outros testes). */
+    public long criarSala(boolean restrita, String bloco, String nome) {
+        long id = jdbc.queryForObject("INSERT INTO recurso (tipo, nome, restrito) VALUES ('SALA', ?, ?) RETURNING id",
+                Long.class, nome, restrita);
+        jdbc.update("INSERT INTO sala (id, capacidade, bloco, andar, tipo_sala) VALUES (?, 30, ?, 1, 'LABORATORIO')",
+                id, bloco);
+        return id;
+    }
+
     public int contarReservas(long salaId) {
         return jdbc.queryForObject("""
                 SELECT count(DISTINCT reserva_id) FROM ocupacao WHERE recurso_id = ? AND reserva_id IS NOT NULL""",

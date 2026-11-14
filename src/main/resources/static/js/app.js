@@ -207,7 +207,22 @@
         }
     }
 
+    /**
+     * Ao sair (ou com a sessão expirada), apaga da página tudo o que veio da API. Esconder não basta:
+     * num computador compartilhado, o próximo usuário veria os dados do anterior no HTML.
+     */
+    function apagarDadosDaTela() {
+        ['resultado-salas', 'lista-reservas', 'lista-aprovacoes', 'totais-relatorio', 'resumo-reserva', 'professor',
+            'materiais'].forEach((id) => $(id).replaceChildren());
+        $('tabela-relatorio').tBodies[0].replaceChildren();
+        $('tabela-relatorio').hidden = true;
+        $('form-reserva').hidden = true;
+        $('form-reserva').reset();
+        escolha = null;
+    }
+
     function mostrarLogin() {
+        apagarDadosDaTela();
         $('menu').replaceChildren();
         $('menu').hidden = true;
         $('usuario').textContent = '';
@@ -409,7 +424,7 @@
         const lista = $('lista-aprovacoes');
         lista.replaceChildren(el('p', { classe: 'vazio' }, 'Carregando…'));
         try {
-            const pagina = await api('GET', '/api/reservas?' + new URLSearchParams({ status: 'SOLICITADA', tamanho: '100' }));
+            const pagina = await api('GET', '/api/reservas?' + new URLSearchParams({ status: 'SOLICITADA', de: hoje(), tamanho: '100' }));
             lista.replaceChildren(...(pagina.itens.length === 0
                 ? [el('p', { classe: 'vazio' }, 'Nenhuma reserva aguardando aprovação.')]
                 : pagina.itens.map((reserva) => cartaoDeReserva(reserva, acoesDeAprovacao(reserva)))));
