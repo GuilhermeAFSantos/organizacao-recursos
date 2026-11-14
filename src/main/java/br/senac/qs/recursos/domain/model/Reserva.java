@@ -172,9 +172,7 @@ public class Reserva {
 
     public void aprovar(Usuario responsavel, Instant agora) {
         exigirResponsavel(responsavel, "aprovar");
-        if (responsavel.mesmaPessoaQue(solicitante)) {
-            throw new OperacaoNaoPermitidaException("Você não pode aprovar ou rejeitar uma reserva solicitada por você.");
-        }
+        proibirDecisaoSobreAPropria(responsavel);
         this.aprovador = responsavel;
         mudarPara(APROVADA, responsavel.getId(), responsavel.getEmail(), null, agora);
     }
@@ -208,6 +206,14 @@ public class Reserva {
     private static void exigirResponsavel(Usuario autor, String acao) {
         if (autor.getPerfil() != Perfil.RESPONSAVEL) {
             throw new OperacaoNaoPermitidaException("Somente um RESPONSAVEL pode " + acao + " reservas.");
+        }
+    }
+
+    /** Segregação de funções: ninguém decide sobre a reserva que ele mesmo pediu. */
+    private void proibirDecisaoSobreAPropria(Usuario responsavel) {
+        if (responsavel.mesmaPessoaQue(solicitante)) {
+            throw new OperacaoNaoPermitidaException(
+                    "Você não pode aprovar ou rejeitar uma reserva solicitada por você.");
         }
     }
 
