@@ -216,7 +216,7 @@ Tomadas pela equipe técnica (sem regra no enunciado) e registradas aqui para a 
 | Concorrência na desativação | Trava a linha do recurso (`RecursoRepository.travar`), como reservas e bloqueios. | Uma reserva simultânea espera e encontra o recurso inativo, ou termina antes e é contada. |
 | Duplicidade | Nome de sala único sem diferenciar maiúsculas (índice parcial da **V4**); matrícula e patrimônio únicos (V1). Nomes de professor e de material podem repetir. | Duas "Sala 101" confundem quem reserva; dois projetores iguais são normais. A aplicação confere antes (mensagem clara, 409) e o índice garante sob concorrência. |
 | Competências | Texto livre, normalizado (espaços) e comparado sem maiúsculas; reaproveitada entre professores, criada na hora se não existir. | Evita "Java" e "java" como competências diferentes sem exigir um cadastro separado de competências. |
-| Restrito | Informado explicitamente em todo cadastro (`restrito` obrigatório). Alterar não muda reservas já feitas. | Evita um padrão escondido ("professor é restrito?") e efeitos retroativos. |
+| Restrito | Informado explicitamente no cadastro de **sala e material** (`restrito` obrigatório). **Professor é sempre restrito (D4)**: o cadastro de professor nem tem o campo (revisão Q13, 14/11). Alterar não muda reservas já feitas. | Evita um padrão escondido para salas e materiais; para professores, o enunciado manda o RESPONSAVEL "validar a alocação de docentes". A primeira versão deixava escolher e contrariava a D4, o que a revisão dos cenários BDD encontrou. |
 | Alteração concorrente | `@Version` em `Recurso` (409 "Edição concorrente"). | Duas alterações simultâneas do mesmo cadastro não se sobrescrevem em silêncio. |
 | Localização | Bloco + andar da sala (andar pode ser negativo: subsolo). Professores e materiais não têm localização. | É o que o schema da V1 já modelava. |
 | Disponibilidade | `inicio` e `fim` juntos (400 caso contrário); livre = nenhuma ocupação bloqueante sobreposta, pela **mesma regra** da constraint (encostar não conflita). Material DANIFICADO não é oferecido. | Pesquisa e reserva não podem discordar sobre o que é "livre". |
@@ -250,9 +250,10 @@ critério foi movido para `domain.pesquisa`.
 | Alterações simultâneas | O `@Version` da reserva recusa (409 "Edição concorrente") a alteração feita sobre uma versão desatualizada. Testado: nenhum 500 e ocupação nunca dessincronizada da reserva. | Mitiga o risco "início/fim de reserva e ocupação dessincronizados". |
 | Auditoria | Ação `ALTERACAO` com "Horário alterado de 01/12/2026 10:00–12:00 para …" no horário de Brasília. | RC08: o histórico mostra o que mudou, não só que mudou. |
 
-**Ponto em aberto:** a **criação** de reserva ainda aceita horário no passado (os testes de não
-comparecimento usam isso). A alteração já exige horário futuro. Decidir se a criação também deve
-exigir.
+**Decidido depois (Q12, 14/11):** a **criação** também exige que a reserva comece no futuro (422), como a
+alteração. Testes que precisam de reserva no passado (não comparecimento, atraso) a preparam no banco.
+**Q11:** a volta a SOLICITADA ao alterar o horário de reserva aprovada com recurso restrito foi
+confirmada (ver [cenários BDD](testes/bdd-aprovacao-bloqueio.md#q11)).
 
 **Build:** um build local falhou com "Could not self-attach to current VM" (Mockito se anexando à
 JVM em tempo de execução, intermitente no Windows). O Mockito agora é carregado como `-javaagent`

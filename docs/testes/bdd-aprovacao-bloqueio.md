@@ -67,7 +67,7 @@ seguir o caminho requisito → cenário → teste → evidência.
 | Sala 101 | SALA | não |
 | Sala 102 | SALA | não |
 | Laboratório 3 | SALA | **sim** |
-| Prof. Carlos | PROFESSOR | **sim** (ver [Q13](#q13)) |
+| Prof. Carlos | PROFESSOR | **sim**: todo professor é restrito (D4, [Q13](#q13)) |
 | Projetor PAT-0012 | MATERIAL | não |
 
 ---
@@ -385,10 +385,10 @@ CANCELADA, NAO_COMPARECEU. (No código o estado é `CONCLUIDA`, sem acento.)
 São 7 transições permitidas e 42 recusadas. A linha EM_USO → CANCELADA = ❌ é a RC07 aplicada à
 máquina de estados: reserva iniciada não pode ser desfeita.
 
-¹ **Exceção implementada, a confirmar ([Q11](#q11)):** nenhuma *ação de transição* leva APROVADA a
+¹ **Exceção decidida ([Q11](#q11)):** nenhuma *ação de transição* leva APROVADA a
 SOLICITADA. Mas a **alteração de horário** de uma reserva APROVADA que tem recurso restrito a devolve
 a SOLICITADA, para ser aprovada de novo (ES-06). É o único caminho que volta um estado, e fica
-auditado como `ALTERACAO`. A Regra 4, como está escrita, não prevê esse caminho.
+auditado como `ALTERACAO`, fora das ações de transição da matriz.
 
 ```gherkin
 # language: pt
@@ -464,7 +464,7 @@ Funcionalidade: Máquina de estados da reserva (RC05, RC07, RC08)
     E existe exatamente 1 registro de auditoria de transição
     E nenhuma resposta é 500
 
-  # Comportamento implementado; ver Q11.
+  # Q11 decidida: a aprovação valia para o horário antigo.
   Cenário: ES-06 Alterar o horário de reserva aprovada com recurso restrito exige nova aprovação
     Dado que a reserva está no estado "APROVADA", aprovada por "rita@senac.br"
     E que agora é "2026-12-01T07:00:00-03:00"
@@ -494,6 +494,8 @@ que não é uma decisão de negócio.
 | Concluir | 09:00:00 (antes do fim) | **EM ABERTO** · hoje: permitido, e o horário continua ocupado até as 10:00 | [Q6](#q6) |
 | Alterar horário | 07:59 | permitido | decisão da fatia de alteração |
 | Alterar horário | 08:00:00 | recusado (422) | decisão da fatia de alteração |
+| Criar reserva | início às 08:00, pedida às 08:00 ou depois | recusado (422 "A reserva deve começar no futuro.") | [Q12](#q12) |
+| Criar reserva | início às 08:00, pedida às 07:59 | permitido | [Q12](#q12) |
 
 ---
 
@@ -514,9 +516,9 @@ exemplos afetados para as tabelas executáveis e registre a decisão em `docs/ar
 | <a id="q8"></a>Q8 | Uma SOLICITADA pode ser **aprovada depois do início**? | AP-08 | ✅ **Decidido:** aprovar só antes do início; a pendente pode ser rejeitada ou cancelada depois |
 | <a id="q9"></a>Q9 | Bloqueio **ADMINISTRATIVO** segue as mesmas regras da manutenção? | MN-10 | ✅ **Decidido:** mesmas regras |
 | <a id="q10"></a>Q10 | Manutenção pode ser **encerrada antes** do fim previsto? | MN-11 | ✅ **Decidido:** o ADMINISTRADOR encerra; o fim passa ao próximo minuto cheio |
-| <a id="q11"></a>Q11 | Alterar o horário de uma reserva **APROVADA com recurso restrito** deve devolvê-la a SOLICITADA (nova aprovação), como faz hoje? A alternativa seria proibir a alteração e exigir cancelar e pedir de novo. | ES-06, nota ¹ da matriz | ⏳ **A confirmar.** Decisão técnica tomada na fatia de alteração, fora da Regra 4 como está escrita |
-| <a id="q12"></a>Q12 | Uma reserva pode ser **criada com horário no passado**? (A alteração de horário já exige horário futuro.) | ES-01 (não comparecimento nos testes de API) | ⏳ **Em aberto.** Hoje: a criação aceita |
-| <a id="q13"></a>Q13 | **Todo professor é restrito?** A decisão D4 em `docs/arquitetura.md` diz que sim, mas o cadastro implementado aceita professor não restrito (o campo `restrito` é informado livremente). | AP-03 | ⏳ **Divergência a resolver:** ajustar o cadastro ou a D4 |
+| <a id="q11"></a>Q11 | Alterar o horário de uma reserva **APROVADA com recurso restrito** deve devolvê-la a SOLICITADA (nova aprovação), como faz hoje? A alternativa seria proibir a alteração e exigir cancelar e pedir de novo. | ES-06, nota ¹ da matriz | ✅ **Decidido:** mantém a volta a SOLICITADA, auditada como ALTERACAO. A aprovação valia para o horário antigo, e a RC06 exige aprovação para recurso restrito |
+| <a id="q12"></a>Q12 | Uma reserva pode ser **criada com horário no passado**? (A alteração de horário já exige horário futuro.) | ES-01 (não comparecimento nos testes de API) | ✅ **Decidido:** não; a reserva precisa começar no futuro (422), como na alteração |
+| <a id="q13"></a>Q13 | **Todo professor é restrito?** A decisão D4 em `docs/arquitetura.md` diz que sim, mas o cadastro aceitava professor não restrito (o campo `restrito` era informado livremente). | AP-03 | ✅ **Decidido:** vale a D4; o cadastro de professor não tem mais o campo `restrito` (o professor é sempre restrito) |
 
 ---
 
@@ -544,7 +546,7 @@ puras são medidas na unidade, onde é barato testar todas as combinações.
 | AP-08 aprovar só antes do início | ✅ | | `ReservaTest` (Q8, fronteira de 1 s) | Regra de tempo com `Clock.fixed` |
 | AU-01 dona não decide | ✅ | ✅ | `ReservaTest`, `TransicoesReservaIT` | API: 403 |
 | AU-02 token adulterado | | ✅ | `TransicoesReservaIT` | A assinatura do JWT protege o perfil (401) |
-| AU-03 mass assignment | | 🟡 | `CriarReservaSalaIT` | Só a linha `"status"` na criação. **Faltam:** `aprovadorId` e a alteração de horário. |
+| AU-03 mass assignment | | ✅ | `CriarReservaSalaIT` (`status`, `aprovadorId`), `AlteracaoHorarioIT` (`status`) | `fail-on-unknown-properties` + DTO, sem gravar nada |
 | AU-04 RESPONSAVEL não se autoaprova | ✅ | | `ReservaTest` | Defesa em profundidade (inalcançável pela API após Q2) |
 | AU-05 RESPONSAVEL não cria reserva | | ✅ | `CriarReservaSalaIT` | Autorização (403) |
 | MN-01 fronteiras | ✅ | ✅ | `PeriodoReservaTest` (RC02), `BloqueiosIT`, `CriarReservaSalaIT` e `MinutoCheioValidatorTest` (Q3) | Unidade: `sobrepoe` nas fronteiras. API: as linhas de minuto contra a constraint real; as de segundo pela validação. |
@@ -552,8 +554,8 @@ puras são medidas na unidade, onde é barato testar todas as combinações.
 | MN-03 outro recurso livre | | ✅ | `BloqueiosIT` | Constraint por recurso |
 | MN-04 tudo ou nada | | ✅ | `ReservaComVariosRecursosIT` | Rollback no banco real |
 | MN-05 alteração para dentro da manutenção | | ✅ | `AlteracaoHorarioIT` | Recusa sem mudar o horário gravado |
-| MN-06 manutenção sobre reserva ativa | | 🟡 | `BloqueiosIT` | Só a linha APROVADA. **Faltam:** SOLICITADA e EM_USO. |
-| MN-07 reservas inativas não impedem | | 🟡 | `BloqueiosIT` | Só a linha CANCELADA. **Faltam:** REJEITADA e NAO_COMPARECEU. |
+| MN-06 manutenção sobre reserva ativa | | ✅ | `BloqueiosIT` (SOLICITADA, APROVADA, EM_USO) | Constraint + listagem dos conflitos |
+| MN-07 reservas inativas não impedem | | ✅ | `BloqueiosIT` (CANCELADA, REJEITADA, NAO_COMPARECEU) | Ocupações não bloqueantes |
 | MN-08 só ADMINISTRADOR | ✅ | ✅ | `BloqueioTest`, `BloqueiosIT` | API: 403 |
 | MN-09 reserva × manutenção simultâneas | | ✅ | `BloqueiosIT` | Concorrência real (5 rodadas) |
 | MN-10 bloqueio administrativo | ✅ | ✅ | `BloqueioTest`, `BloqueiosIT` (Q9) | Mesmas regras da manutenção |
@@ -565,14 +567,8 @@ puras são medidas na unidade, onde é barato testar todas as combinações.
 | ES-05 decisões simultâneas | | ✅ | `TransicoesReservaIT` | `@Version` + concorrência real |
 | ES-06 alteração exige nova aprovação | ✅ | ✅ | `AlteracaoReservaTest`, `AlteracaoHorarioIT` | Volta a SOLICITADA e é reaprovada |
 
-**Resumo:** 30 cenários, todos com teste automatizado. **19 têm teste de unidade e 27 têm teste de
-API; 16 têm os dois.** Em três cenários (AU-03, MN-06, MN-07), o teste de API cobre só parte dos
-exemplos (🟡). Os exemplos que faltam estão listados na tabela, como trabalho para a próxima etapa de
-código.
-
-> Os testes de MN-10 e MN-11 levam no `@DisplayName` o identificador da pergunta (Q9, Q10), e não
-> MN-10 e MN-11, que foram numerados nesta revisão. Ao completar os testes 🟡, vale renomeá-los para
-> manter o rastreio cenário → teste.
+**Resumo:** 30 cenários, todos com teste automatizado e com todos os exemplos cobertos. **19 têm teste
+de unidade e 27 têm teste de API; 16 têm os dois.**
 
 ### Por que não usar Cucumber
 
