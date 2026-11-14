@@ -110,7 +110,7 @@ public class Reserva {
         reserva.atualizadoEm = agora;
         recursos.forEach(recurso -> reserva.ocupacoes.add(new Ocupacao(reserva, recurso, periodo)));
         reserva.registrar(null, StatusReserva.SOLICITADA, solicitante.getId(), solicitante.getEmail(), null, agora);
-        if (recursos.stream().noneMatch(Recurso::isRestrito)) {
+        if (!reserva.temRecursoRestrito()) {
             reserva.aprovarAutomaticamente(agora);
         }
         return reserva;
@@ -152,6 +152,11 @@ public class Reserva {
         if (!agora.isBefore(novo.inicio())) {
             throw new RegraNegocioException("O novo horário deve começar no futuro.");
         }
+    }
+
+    /** RF07/RC06: basta um recurso restrito para a reserva inteira precisar de aprovação. */
+    private boolean temRecursoRestrito() {
+        return ocupacoes.stream().anyMatch(ocupacao -> ocupacao.getRecurso().isRestrito());
     }
 
     /** D1: sem recurso restrito, não há quem precise aprovar; o sistema aprova e isso fica auditado. */
