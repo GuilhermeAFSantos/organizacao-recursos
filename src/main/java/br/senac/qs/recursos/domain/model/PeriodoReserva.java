@@ -33,6 +33,6 @@ public record PeriodoReserva(Instant inicio, Instant fim) {
     }
 
     public boolean sobrepoe(PeriodoReserva outro) {
-        throw new UnsupportedOperationException("ainda não implementado");
+        return inicio.isBefore(outro.fim) && outro.inicio.isBefore(fim);
     }
 }
