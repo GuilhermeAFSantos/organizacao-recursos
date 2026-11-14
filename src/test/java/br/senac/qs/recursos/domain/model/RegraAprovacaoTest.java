@@ -24,6 +24,8 @@ class RegraAprovacaoTest {
     final Usuario ana = new Usuario("ana@senac.br", Perfil.SOLICITANTE);
     final Sala sala101 = new Sala("Sala 101", false);
     final Sala laboratorio = new Sala("Laboratório 3", true);
+    final Usuario adm = new Usuario("adm@senac.br", Perfil.ADMINISTRADOR);
+    final Professor carlos = Professor.cadastrar(adm, "Prof. Carlos", "P-1", null, java.util.Set.of());
 
     /** Reserva pedida pela ana, no período padrão, com os recursos informados. */
     Reserva solicitar(Recurso... recursos) {
@@ -50,5 +52,14 @@ class RegraAprovacaoTest {
 
         assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
         assertThat(reserva.getOcupacoes()).singleElement().satisfies(o -> assertThat(o.isBloqueante()).isTrue());
+    }
+
+    @Test
+    @DisplayName("AP-03: basta um recurso restrito (o professor, depois da sala comum) para a reserva aguardar aprovação")
+    void bastaUmRecursoRestritoNaListaParaAReservaAguardarAprovacao() {
+        var reserva = solicitar(sala101, carlos);
+
+        assertThat(reserva.getStatus()).isEqualTo(StatusReserva.SOLICITADA);
+        assertThat(reserva.getOcupacoes()).hasSize(2).allSatisfy(o -> assertThat(o.isBloqueante()).isTrue());
     }
 }
