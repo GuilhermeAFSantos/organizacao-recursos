@@ -23,6 +23,7 @@
         <springdoc.version>2.8.17</springdoc.version>
         <wiremock.version>3.13.2</wiremock.version>
         <archunit.version>1.5.1</archunit.version>
+        <playwright.version>1.64.0</playwright.version>
         <jacoco-plugin.version>0.8.16</jacoco-plugin.version>
         <sonar-plugin.version>5.8.0.7211</sonar-plugin.version>
 
@@ -128,6 +129,13 @@
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>
             <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Teste da interface num navegador de verdade (Chromium sem janela). -->
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>${playwright.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

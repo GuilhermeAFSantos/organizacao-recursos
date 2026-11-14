@@ -23,7 +23,7 @@ precisa **demonstrar** qualidade, segurança, rastreabilidade e desempenho com e
 
 Java 21 · Spring Boot 3.5 · Maven · PostgreSQL 17 · Spring Data JPA · Flyway · Spring Security
 (JWT) · Bean Validation · springdoc-openapi · JUnit 5 · Mockito · Testcontainers · WireMock ·
-ArchUnit · JaCoCo · SonarCloud · GitHub Actions.
+ArchUnit · Playwright · JaCoCo · SonarCloud · GitHub Actions.
 
 ## Situação atual
 
@@ -113,6 +113,7 @@ O administrador cadastra os demais usuários em `POST /api/usuarios` e os recurs
 | Integração (banco) | `EsquemaBancoIT` | Constraints e triggers do schema no PostgreSQL real |
 | API (caixa-preta) | `LoginIT`, `UsuariosIT`, `CadastroRecursosIT`, `PesquisaRecursosIT`, `CriarReservaSalaIT`, `ReservaComVariosRecursosIT`, `AlteracaoHorarioIT`, `RetiradaDevolucaoIT`, `NotificacaoIT` (WireMock), `ConflitosEvitadosIT`, `RelatorioUtilizacaoIT`, `ListagemReservasIT`, `InterfaceIT`, `TransicoesReservaIT`, `BloqueiosIT`, `AplicacaoIT` | HTTP + JWT + banco reais, ponta a ponta, incluindo aprovar × cancelar e reserva × manutenção simultâneos |
 | Ponta a ponta | `FluxoCompletoIT` | Do primeiro login do administrador ao cadastro e à pesquisa da sala, à reserva concluída, ao bloqueio e à trilha de auditoria |
+| Navegador | `InterfaceNavegadorIT` (Playwright) | A interface no Chromium a 375px: reservar, aprovar, mensagens de erro, HTML injetado sem efeito, sem rolagem lateral |
 | Concorrência | `ReservaConcorrenciaIT`, `ReservaComVariosRecursosIT`, `AlteracaoHorarioIT` | RC03: 20 requisições simultâneas × 10 rodadas → exatamente 1 reserva e 19 conflitos evitados registrados; o mesmo professor pedido por 10 salas → 1; materiais em ordens opostas sem deadlock; alterações simultâneas sem dessincronizar |
 
 ## Estrutura

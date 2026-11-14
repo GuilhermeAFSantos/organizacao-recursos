@@ -317,7 +317,8 @@ nos testes, como ele próprio recomenda para Java 21+.
 | Responsividade | Primeiro o celular: uma coluna, margem de 16px, alvos de toque de 44px, tabela do relatório que vira cartões abaixo de 720px, tema escuro pelo sistema. | Professores reservam pelo celular no corredor. |
 | Erros | A tela mostra o `detail` do ProblemDetail e, se houver, cada campo inválido. | As mensagens da API já são escritas para o usuário final (RF13). |
 | Desempenho das listagens | `hibernate.default_batch_fetch_size: 50`. | Montar a lista de reservas com recursos e solicitante não vira uma consulta por linha. |
-| Evidência que falta | Teste no navegador (Playwright) do fluxo na tela e da largura de celular. | O `InterfaceIT` garante contrato e segurança, mas não executa o JavaScript. |
+| Teste no navegador | `InterfaceNavegadorIT` (Playwright 1.64, Chromium sem janela a 375px): fluxo reservar → aprovar → ver aprovada, mensagem de erro, HTML injetado não executa, sem rolagem lateral, sem erro de JS nem bloqueio da CSP. O CI instala o Chromium com as bibliotecas do sistema. | O `InterfaceIT` garante contrato e segurança, mas não executa o JavaScript. |
+| Dados ao sair | Ao sair ou com a sessão expirada, a tela **apaga** tudo o que veio da API (não basta esconder). Aprovações listam só de hoje em diante. | Defeito encontrado pelo teste no navegador: num computador compartilhado, o próximo usuário veria no HTML as reservas do anterior. |
 
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
