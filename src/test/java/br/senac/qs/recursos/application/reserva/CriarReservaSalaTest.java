@@ -1,0 +1,93 @@
+package br.senac.qs.recursos.application.reserva;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.sql.SQLException;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Optional;
+
+import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
+import br.senac.qs.recursos.domain.model.Reserva;
+import br.senac.qs.recursos.domain.model.Sala;
+import br.senac.qs.recursos.domain.model.Usuario;
+import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
+import br.senac.qs.recursos.domain.repository.ReservaRepository;
+import br.senac.qs.recursos.domain.repository.SalaRepository;
+import br.senac.qs.recursos.domain.repository.UsuarioRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
+
+/**
+ * Teste de UNIDADE isolado (mocks permitidos aqui): reproduz de forma determinística o que, no
+ * teste de concorrência, só acontece quando duas requisições passam juntas pela pré-checagem —
+ * o banco recusa a segunda com SQLSTATE 23P01 (exclusion_violation).
+ */
+@DisplayName("CriarReservaSala: tradução da recusa do banco (RC03)")
+class CriarReservaSalaTest {
+
+    static final Instant INICIO = Instant.parse("2026-12-01T11:00:00Z");
+    static final Instant FIM = Instant.parse("2026-12-01T13:00:00Z");
+
+    UsuarioRepository usuarios = mock(UsuarioRepository.class);
+    SalaRepository salas = mock(SalaRepository.class);
+    OcupacaoRepository ocupacoes = mock(OcupacaoRepository.class);
+    ReservaRepository reservas = mock(ReservaRepository.class);
+
+    CriarReservaSala casoDeUso = new CriarReservaSala(usuarios, salas, ocupacoes, reservas,
+            Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC));
+
+    CriarReservaSalaComando comando = new CriarReservaSalaComando("ana@senac.br", 7L, INICIO, FIM, "Aula");
+
+    @BeforeEach
+    void cenarioEmQueAPreChecagemNaoVeConflito() {
+        var usuario = mock(Usuario.class);
+        when(usuario.isAtivo()).thenReturn(true);
+        var sala = mock(Sala.class);
+        when(sala.getId()).thenReturn(7L);
+        when(sala.getNome()).thenReturn("Sala 101");
+        when(sala.isAtivo()).thenReturn(true);
+
+        when(usuarios.findByEmailIgnoreCase("ana@senac.br")).thenReturn(Optional.of(usuario));
+        when(salas.travarParaReserva(7L)).thenReturn(Optional.of(sala));
+        // A outra transação ainda não confirmou: a consulta prévia vê o horário livre.
+        when(ocupacoes.existeSobreposicao(7L, INICIO, FIM)).thenReturn(false);
+    }
+
+    @Test
+    @DisplayName("recusa do banco por sobreposição (23P01) vira ConflitoHorarioException com mensagem amigável")
+    void traduzViolacaoDeExclusao() {
+        bancoRecusaGravacaoCom("23P01");
+
+        assertThatThrownBy(() -> casoDeUso.executar(comando))
+                .isInstanceOf(ConflitoHorarioException.class)
+                .hasMessage("A sala Sala 101 já está ocupada nesse horário. Escolha outro horário ou outra sala.");
+    }
+
+    @Test
+    @DisplayName("outras violações de integridade NÃO são mascaradas como conflito de horário")
+    void naoMascaraOutrasViolacoes() {
+        bancoRecusaGravacaoCom("23503"); // foreign_key_violation
+
+        assertThatThrownBy(() -> casoDeUso.executar(comando))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /**
+     * Simula a recusa na gravação, seja por {@code save} ou {@code saveAndFlush}: o teste verifica
+     * a TRADUÇÃO do erro, não qual método de gravação o caso de uso escolheu.
+     */
+    private void bancoRecusaGravacaoCom(String sqlState) {
+        var erro = new DataIntegrityViolationException("could not execute statement",
+                new SQLException("violação simulada", sqlState));
+        lenient().when(reservas.save(any(Reserva.class))).thenThrow(erro);
+        lenient().when(reservas.saveAndFlush(any(Reserva.class))).thenThrow(erro);
+    }
+}

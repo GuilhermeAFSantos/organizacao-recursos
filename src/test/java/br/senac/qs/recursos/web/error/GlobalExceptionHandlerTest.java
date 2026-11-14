@@ -34,7 +34,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  *
  * <p>Usa a configuração de segurança real (filtros + JWT), não um mock dela.
  */
-@WebMvcTest
+// Carrega SÓ o controller de teste: os controllers reais dependem de casos de uso e banco,
+// que não fazem parte deste teste do contrato de erros.
+@WebMvcTest(controllers = ControladorDeErrosParaTeste.class)
 @ActiveProfiles("test")
 @Import({ControladorDeErrosParaTeste.class, SecurityConfig.class, JwtConfig.class,
         ProblemDetailSecurityHandler.class, ClockConfig.class})
