@@ -151,7 +151,7 @@ class RelatorioUtilizacaoIT {
         assertThat(relatorio(ana, FUTURO, FUTURO).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "filtros: [{0}]")
     @ValueSource(strings = {"", "?inicio=2030-01-10", "?inicio=2030-01-10&fim=2030-01-09",
             "?inicio=2030-01-01&fim=2031-01-03", "?inicio=10/01/2030&fim=2030-01-11"})
     @DisplayName("período ausente, invertido, maior que 366 dias ou mal formatado: 400")
