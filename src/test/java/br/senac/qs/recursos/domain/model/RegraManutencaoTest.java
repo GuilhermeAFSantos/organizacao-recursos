@@ -14,6 +14,7 @@ import java.time.ZoneOffset;
 import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
 import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -109,6 +110,17 @@ class RegraManutencaoTest {
                 .hasMessage("Este bloqueio já terminou.");
 
         assertThat(manutencao.getPeriodo()).isEqualTo(MANUTENCAO);
+    }
+
+    @Test
+    @DisplayName("MN-11: encerrar uma manutenção já desfeita (encerrada antes de começar) é recusado")
+    void encerrarManutencaoJaDesfeitaERecusado() {
+        var manutencao = manutencaoDaSala101();
+        var relogio = Clock.fixed(ANTES, ZoneOffset.UTC);
+        manutencao.encerrar(adm, relogio.instant());
+
+        assertThatThrownBy(() -> manutencao.encerrar(adm, relogio.instant())).isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Este bloqueio já foi encerrado.");
     }
 
     Bloqueio manutencaoDaSala101() {
