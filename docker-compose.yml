@@ -1,5 +1,5 @@
 # Banco de dados para DESENVOLVIMENTO LOCAL.
-# Credenciais fixas e fracas de propósito: valem só para a sua máquina.
+# A senha vem do arquivo .env (fora do git), o mesmo lido pela aplicação: cp .env.exemplo .env
 # Os testes NÃO usam este banco: cada execução sobe um PostgreSQL descartável via Testcontainers,
 # com a mesma imagem (postgres:17-alpine) para que dev e testes se comportem igual.
 services:
@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: recursos
       POSTGRES_USER: recursos
-      POSTGRES_PASSWORD: recursos
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no arquivo .env (copie de .env.exemplo)}
       TZ: UTC
     ports:
       - "5432:5432"

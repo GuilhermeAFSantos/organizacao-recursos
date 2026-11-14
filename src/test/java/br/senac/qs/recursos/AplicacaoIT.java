@@ -104,6 +104,20 @@ class AplicacaoIT {
         assertThat(resposta.getBody().get("detail").asText()).isEqualTo("O endereço solicitado não existe.");
     }
 
+    @Test
+    @DisplayName("RF01: API stateless não cria sessão nem cookie (por isso a proteção CSRF não se aplica)")
+    void naoCriaSessaoNemCookie() {
+        String token = GeradorTokenTeste.token(jwtEncoder, "ana@senac.br", "SOLICITANTE");
+
+        var autenticada = http.exchange("/api/rota-inexistente", HttpMethod.GET, comToken(token), JsonNode.class);
+        var anonima = http.getForEntity("/api/reservas", JsonNode.class);
+
+        // Sem cookie, o navegador não tem credencial para anexar sozinho a uma requisição forjada:
+        // o token só viaja no cabeçalho Authorization, definido explicitamente pelo cliente.
+        assertThat(autenticada.getHeaders().get(HttpHeaders.SET_COOKIE)).isNull();
+        assertThat(anonima.getHeaders().get(HttpHeaders.SET_COOKIE)).isNull();
+    }
+
     private static HttpEntity<Void> comToken(String token) {
         var cabecalhos = new HttpHeaders();
         cabecalhos.setBearerAuth(token);
