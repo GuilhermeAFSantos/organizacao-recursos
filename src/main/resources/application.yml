@@ -76,4 +76,7 @@ app:
     email: ${ADMIN_EMAIL:}
     senha: ${ADMIN_SENHA:}
   notificacao:
-    url-base: ${NOTIFICACAO_URL:http://localhost:8089}
+    # Serviço externo (RF11). Vazio = notificação simulada, só registrada no log.
+    url-base: ${NOTIFICACAO_URL:}
+    # Tempo limite de conexão e de leitura: um serviço lento não segura a resposta ao usuário.
+    timeout: ${NOTIFICACAO_TIMEOUT:PT2S}
