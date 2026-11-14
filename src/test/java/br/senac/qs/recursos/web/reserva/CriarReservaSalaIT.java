@@ -102,6 +102,20 @@ class CriarReservaSalaIT {
                 .containsExactly("—→SOLICITADA por " + emailSolicitante);
     }
 
+    @Test
+    @DisplayName("Q12: reserva no passado → 422 e nada é gravado")
+    void noPassado() {
+        var ontem = java.time.LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")).minusDays(1);
+        var inicio = ontem.atTime(10, 0).atZone(java.time.ZoneId.of("America/Sao_Paulo")).toOffsetDateTime();
+
+        var resposta = reservar(tokenSolicitante, Map.of("salaId", sala, "inicio", inicio.toString(),
+                "fim", inicio.plusHours(1).toString(), "finalidade", "Aula"));
+
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(resposta.getBody().get("detail").asText()).isEqualTo("A reserva deve começar no futuro.");
+        assertThat(cenario.contarReservas(sala)).isZero();
+    }
+
     @Nested
     @DisplayName("RC01: término posterior ao início")
     class TerminoPosteriorAoInicio {

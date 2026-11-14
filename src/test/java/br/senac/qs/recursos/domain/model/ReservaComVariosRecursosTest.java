@@ -102,6 +102,18 @@ class ReservaComVariosRecursosTest {
     }
 
     @Test
+    @DisplayName("Q12: a reserva precisa começar no futuro (fronteira: 1 minuto antes pode, no início não)")
+    void comecaNoFuturo() {
+        assertThat(Reserva.solicitar(ana, List.of(sala), PERIODO, "Aula", INICIO.minusSeconds(60)).getStatus())
+                .isEqualTo(APROVADA);
+        assertThatThrownBy(() -> Reserva.solicitar(ana, List.of(sala), PERIODO, "Aula", INICIO))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("A reserva deve começar no futuro.");
+        assertThatThrownBy(() -> Reserva.solicitar(ana, List.of(sala), PERIODO, "Aula", FIM))
+                .isInstanceOf(RegraNegocioException.class);
+    }
+
+    @Test
     @DisplayName("sem nenhum recurso não há reserva")
     void semRecurso() {
         assertThatThrownBy(() -> Reserva.solicitar(ana, List.of(), PERIODO, "Aula", ANTES))
