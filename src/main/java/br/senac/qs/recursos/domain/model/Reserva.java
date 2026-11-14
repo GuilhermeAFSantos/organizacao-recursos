@@ -172,6 +172,9 @@ public class Reserva {
 
     public void aprovar(Usuario responsavel, Instant agora) {
         exigirResponsavel(responsavel, "aprovar");
+        if (responsavel.mesmaPessoaQue(solicitante)) {
+            throw new OperacaoNaoPermitidaException("Você não pode aprovar ou rejeitar uma reserva solicitada por você.");
+        }
         this.aprovador = responsavel;
         mudarPara(APROVADA, responsavel.getId(), responsavel.getEmail(), null, agora);
     }
