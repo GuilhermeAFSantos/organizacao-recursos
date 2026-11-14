@@ -12,7 +12,6 @@ import br.senac.qs.recursos.domain.model.Recurso;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Caso de uso: mudar o horário de uma reserva (RF04), mantendo os mesmos recursos.
@@ -32,19 +31,25 @@ public class AlterarHorarioReserva {
     private final UsuarioDoToken usuarioDoToken;
     private final AgendaDeRecursos agenda;
     private final HistoricoDaReserva historico;
+    private final RegistrarConflitoEvitado conflitos;
     private final Clock clock;
 
     public AlterarHorarioReserva(ReservaRepository reservas, UsuarioDoToken usuarioDoToken, AgendaDeRecursos agenda,
-                                 HistoricoDaReserva historico, Clock clock) {
+                                 HistoricoDaReserva historico, RegistrarConflitoEvitado conflitos, Clock clock) {
         this.reservas = reservas;
         this.usuarioDoToken = usuarioDoToken;
         this.agenda = agenda;
         this.historico = historico;
+        this.conflitos = conflitos;
         this.clock = clock;
     }
 
-    @Transactional
+    /** Transação aberta por {@link RegistrarConflitoEvitado}, como na criação. */
     public ReservaResumo executar(Long reservaId, String emailAutor, Instant inicio, Instant fim) {
+        return conflitos.executarRegistrandoConflito(() -> alterar(reservaId, emailAutor, inicio, fim));
+    }
+
+    private ReservaResumo alterar(Long reservaId, String emailAutor, Instant inicio, Instant fim) {
         var novo = new PeriodoReserva(inicio, fim);
         var reserva = reservas.findById(reservaId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Reserva " + reservaId + " não encontrada."));
@@ -56,7 +61,7 @@ public class AlterarHorarioReserva {
         // Validar ANTES de consultar conflitos: a consulta faria o Hibernate gravar antes uma mudança
         // ainda não validada, e a recusa do banco sairia sem a mensagem clara.
         reserva.exigirAlteravel(autor, novo, agora);
-        agenda.garantirLivre(recursos, novo, reserva.getId());
+        agenda.garantirLivre(recursos, novo, reserva.getId(), autor);
         reserva.alterarPeriodo(autor, novo, agora);
 
         try {
@@ -64,7 +69,7 @@ public class AlterarHorarioReserva {
             reservas.saveAndFlush(reserva);
         } catch (DataIntegrityViolationException e) {
             if (ViolacaoDeExclusao.causou(e)) {
-                throw agenda.conflitoNoBanco(recursos);
+                throw agenda.conflitoNoBanco(recursos, novo, autor);
             }
             throw e;
         }

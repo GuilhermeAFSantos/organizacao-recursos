@@ -288,6 +288,21 @@ nos testes, como ele próprio recomenda para Java 21+.
 | Arquitetura | Porta `Notificador` na aplicação, adaptador `NotificadorHttp` na infraestrutura; nos testes, o **WireMock** faz o papel do serviço externo. | Inversão de dependência só onde há integração externa (seção 1). |
 | Duplicação removida | `HistoricoDaReserva` concentra auditoria e evento, antes repetidos em criação, transições e alteração. | Um só lugar garante que toda mudança é auditada e notificada. |
 
+### Decisões da fatia de relatório de utilização (Fase 2)
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Quem vê | RESPONSAVEL e ADMINISTRADOR. | É informação de gestão. |
+| Período | Dias de Brasília (`AAAA-MM-DD`), fim incluído, no máximo 366 dias. | Um ano cobre o semestre e o ano letivo; o limite impede consultas que varrem tudo. |
+| O que conta como utilização | Reservas APROVADA, EM_USO e CONCLUIDA. Aguardando aprovação, rejeitada e cancelada não contam; o não comparecimento é contado à parte e não soma horas. | O relatório mede o que de fato ocupou o recurso. |
+| Horas | Cada ocupação é recortada ao período (`least`/`greatest` no SQL): uma aula das 23h à 1h conta 1 h em cada dia. | Os totais de dois períodos vizinhos somam o total do período inteiro. |
+| Carga horária | Para um recurso PROFESSOR, as horas reservadas são a carga horária no período. | O professor é um recurso como os outros (D2); não é preciso um segundo relatório. |
+| Totais | Por **reserva distinta**: uma reserva de sala + professor conta uma vez, com as horas dela. | Somar por recurso contaria a mesma aula duas vezes. |
+| Conflitos evitados | Toda reserva ou alteração recusada por sobreposição (outra reserva ou manutenção) é registrada com recurso, quem tentou, horário **pedido** e origem (`APLICACAO` na pré-checagem, `BANCO` no 23P01). Entram no relatório pelo horário pedido. | Mostra a demanda que não foi atendida naquele horário. Origem BANCO diferente de zero indica que o lock deixou passar uma corrida. |
+| Quando o conflito é gravado | **Depois** que a transação da reserva termina e devolve a conexão (`RegistrarConflitoEvitado` com `TransactionTemplate`). | Dentro dela, o rollback apagaria o registro. A primeira versão gravava num listener de rollback e o `ReservaConcorrenciaIT` travou: o Spring só devolve a conexão depois dos listeners, e 20 requisições com 10 conexões esperavam umas pelas outras. |
+| Recursos listados | Só os com alguma atividade no período, do mais ao menos usado. | Lista curta e útil; ociosidade completa pode ser uma evolução. |
+| SQL nativo | As agregações ficam num repositório próprio (`RelatorioRepository`), com parâmetros ligados. | Soma de intervalos recortados é natural no PostgreSQL e cara em JPQL. |
+
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
 mudança para a auditoria). A verificação de permissão vem primeiro para não revelar o estado da

@@ -7,12 +7,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import br.senac.qs.recursos.domain.exception.ConflitoHorarioException;
 import br.senac.qs.recursos.domain.model.Bloqueio;
 import br.senac.qs.recursos.domain.model.Ocupacao;
+import br.senac.qs.recursos.domain.model.OrigemConflito;
 import br.senac.qs.recursos.domain.model.PeriodoReserva;
 import br.senac.qs.recursos.domain.model.Recurso;
 import br.senac.qs.recursos.domain.model.TipoBloqueio;
+import br.senac.qs.recursos.domain.model.Usuario;
 import br.senac.qs.recursos.domain.repository.OcupacaoRepository;
 import br.senac.qs.recursos.domain.repository.RecursoRepository;
 import org.springframework.stereotype.Component;
@@ -51,15 +52,18 @@ public class AgendaDeRecursos {
 
     /**
      * Recusa (409) se algum recurso tiver ocupação bloqueante sobreposta ao período, ignorando as da
-     * própria reserva que está sendo alterada ({@code reservaIgnorada}; nulo na criação).
+     * própria reserva que está sendo alterada ({@code reservaIgnorada}; nulo na criação). A exceção
+     * leva o necessário para registrar o conflito evitado (RF12) em nome de {@code autor}.
      */
-    public void garantirLivre(List<Recurso> recursosDaReserva, PeriodoReserva periodo, Long reservaIgnorada) {
+    public void garantirLivre(List<Recurso> recursosDaReserva, PeriodoReserva periodo, Long reservaIgnorada,
+                              Usuario autor) {
         for (var recurso : recursosDaReserva) {
             var conflitos = ocupacoes.sobrepostas(recurso.getId(), periodo.inicio(), periodo.fim()).stream()
                     .filter(o -> o.getReserva() == null || !o.getReserva().getId().equals(reservaIgnorada))
                     .toList();
             if (!conflitos.isEmpty()) {
-                throw conflitoCom(recurso, conflitos);
+                throw new ConflitoEvitadoException(mensagemDeConflito(recurso, conflitos), recurso.getId(),
+                        autor.getId(), periodo, OrigemConflito.APLICACAO);
             }
         }
     }
@@ -68,32 +72,35 @@ public class AgendaDeRecursos {
      * Tradução da recusa da constraint (23P01), que não diz qual recurso conflitou: com um só recurso
      * dá para nomeá-lo; com vários, a mensagem é genérica.
      */
-    public ConflitoHorarioException conflitoNoBanco(List<Recurso> recursosDaReserva) {
-        if (recursosDaReserva.size() == 1) {
-            return ocupado(recursosDaReserva.getFirst());
-        }
-        return new ConflitoHorarioException("Um dos recursos já está ocupado nesse horário. Escolha outro horário.");
+    public ConflitoEvitadoException conflitoNoBanco(List<Recurso> recursosDaReserva, PeriodoReserva periodo,
+                                                    Usuario autor) {
+        var unico = recursosDaReserva.size() == 1 ? recursosDaReserva.getFirst() : null;
+        var mensagem = unico != null ? ocupado(unico)
+                : "Um dos recursos já está ocupado nesse horário. Escolha outro horário.";
+        return new ConflitoEvitadoException(mensagem, unico == null ? null : unico.getId(), autor.getId(), periodo,
+                OrigemConflito.BANCO);
     }
 
-    private static ConflitoHorarioException conflitoCom(Recurso recurso, List<Ocupacao> conflitos) {
+    private static String mensagemDeConflito(Recurso recurso, List<Ocupacao> conflitos) {
         return conflitos.stream().map(Ocupacao::getBloqueio).filter(Objects::nonNull).findFirst()
                 .map(bloqueio -> bloqueado(recurso, bloqueio))
                 .orElseGet(() -> ocupado(recurso));
     }
 
-    private static ConflitoHorarioException bloqueado(Recurso recurso, Bloqueio bloqueio) {
+    private static String bloqueado(Recurso recurso, Bloqueio bloqueio) {
         var tipo = recurso.getTipo();
         var p = bloqueio.getPeriodo();
         var situacao = bloqueio.getTipo() == TipoBloqueio.MANUTENCAO ? "está em manutenção"
                 : "está " + tipo.concordar("bloqueado");
-        return new ConflitoHorarioException(recurso.identificacao() + " " + situacao + " das "
+        return recurso.identificacao() + " " + situacao + " das "
                 + HORA.format(p.inicio().atZone(BRASILIA)) + " às " + HORA.format(p.fim().atZone(BRASILIA))
-                + " de " + DATA.format(p.inicio().atZone(BRASILIA)) + ". Escolha outro horário ou " + tipo.outro() + ".");
+                + " de " + DATA.format(p.inicio().atZone(BRASILIA)) + ". Escolha outro horário ou " + tipo.outro()
+                + ".";
     }
 
-    private static ConflitoHorarioException ocupado(Recurso recurso) {
+    private static String ocupado(Recurso recurso) {
         var tipo = recurso.getTipo();
-        return new ConflitoHorarioException(recurso.identificacao() + " já está " + tipo.concordar("ocupado")
-                + " nesse horário. Escolha outro horário ou " + tipo.outro() + ".");
+        return recurso.identificacao() + " já está " + tipo.concordar("ocupado")
+                + " nesse horário. Escolha outro horário ou " + tipo.outro() + ".";
     }
 }

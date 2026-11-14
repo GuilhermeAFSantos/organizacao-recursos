@@ -29,8 +29,8 @@ ArchUnit · JaCoCo · SonarCloud · GitHub Actions.
 
 | Métrica | Meta | Atual |
 |---|---|---|
-| Cobertura de linhas (JaCoCo) | ≥ 80% | **98,5%** |
-| Cobertura de branches (JaCoCo) | ≥ 70% | **92,5%** |
+| Cobertura de linhas (JaCoCo) | ≥ 80% | **98,3%** |
+| Cobertura de branches (JaCoCo) | ≥ 70% | **92,6%** |
 | Bugs / vulnerabilidades (SonarCloud) | 0 | **0 / 0** |
 | Requisitos críticos (RC) na RTM | 100% | **100%** (8 de 8 rastreados) |
 
@@ -39,6 +39,7 @@ cadastro de salas, professores e materiais com desativação (RF02); pesquisa po
 localização, competência e disponibilidade (RF03); reserva de sala com professor e materiais, tudo ou
 nada, com conflito também na agenda do professor (RF04, RF05), e alteração de horário (RF04); retirada e devolução de materiais com pendências e histórico
 imutável (RF09); notificação ao solicitante após cada mudança, simulada ou via serviço externo (RF11);
+relatório de utilização, carga horária e conflitos evitados (RF12);
 com as regras RC01, RC02 e RC03; aprovação automática de recurso não restrito; aprovação, rejeição,
 cancelamento, início de uso, não comparecimento e conclusão com a máquina de estados (RC05, RC06,
 RC07) e auditoria de cada mudança de reservas, bloqueios, usuários e recursos (RC08, RF10); manutenção e bloqueios com encerramento antecipado (RF08,
@@ -109,9 +110,9 @@ O administrador cadastra os demais usuários em `POST /api/usuarios` e os recurs
 | Web (MockMvc) | `GlobalExceptionHandlerTest` | Contrato de erros ProblemDetail, sem vazar detalhes internos |
 | Arquitetura | `ArquiteturaTest` (ArchUnit) | Dependências entre camadas |
 | Integração (banco) | `EsquemaBancoIT` | Constraints e triggers do schema no PostgreSQL real |
-| API (caixa-preta) | `LoginIT`, `UsuariosIT`, `CadastroRecursosIT`, `PesquisaRecursosIT`, `CriarReservaSalaIT`, `ReservaComVariosRecursosIT`, `AlteracaoHorarioIT`, `RetiradaDevolucaoIT`, `NotificacaoIT` (WireMock), `TransicoesReservaIT`, `BloqueiosIT`, `AplicacaoIT` | HTTP + JWT + banco reais, ponta a ponta, incluindo aprovar × cancelar e reserva × manutenção simultâneos |
+| API (caixa-preta) | `LoginIT`, `UsuariosIT`, `CadastroRecursosIT`, `PesquisaRecursosIT`, `CriarReservaSalaIT`, `ReservaComVariosRecursosIT`, `AlteracaoHorarioIT`, `RetiradaDevolucaoIT`, `NotificacaoIT` (WireMock), `ConflitosEvitadosIT`, `RelatorioUtilizacaoIT`, `TransicoesReservaIT`, `BloqueiosIT`, `AplicacaoIT` | HTTP + JWT + banco reais, ponta a ponta, incluindo aprovar × cancelar e reserva × manutenção simultâneos |
 | Ponta a ponta | `FluxoCompletoIT` | Do primeiro login do administrador ao cadastro e à pesquisa da sala, à reserva concluída, ao bloqueio e à trilha de auditoria |
-| Concorrência | `ReservaConcorrenciaIT`, `ReservaComVariosRecursosIT`, `AlteracaoHorarioIT` | RC03: 20 requisições simultâneas × 10 rodadas → exatamente 1 reserva; o mesmo professor pedido por 10 salas → 1; materiais em ordens opostas sem deadlock; alterações simultâneas sem dessincronizar |
+| Concorrência | `ReservaConcorrenciaIT`, `ReservaComVariosRecursosIT`, `AlteracaoHorarioIT` | RC03: 20 requisições simultâneas × 10 rodadas → exatamente 1 reserva e 19 conflitos evitados registrados; o mesmo professor pedido por 10 salas → 1; materiais em ordens opostas sem deadlock; alterações simultâneas sem dessincronizar |
 
 ## Estrutura
 
