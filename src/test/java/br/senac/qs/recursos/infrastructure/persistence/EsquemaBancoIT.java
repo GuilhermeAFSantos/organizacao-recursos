@@ -33,7 +33,7 @@ import org.springframework.test.context.ActiveProfiles;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import(PostgresTestcontainersConfig.class)
 @ActiveProfiles("test")
-@DisplayName("Schema do banco (Flyway V1) em PostgreSQL real")
+@DisplayName("Schema do banco (migrations Flyway) em PostgreSQL real")
 class EsquemaBancoIT {
 
     private static final String SQLSTATE_EXCLUSAO = "23P01";
@@ -162,11 +162,11 @@ class EsquemaBancoIT {
         void deleteBloqueadoEmQualquerStatus(String status) {
             long reserva = criarReserva(8, 10, status);
 
+            // O gatilho BEFORE aborta o comando antes de qualquer remoção. (Não dá para conferir
+            // com um SELECT depois: no PostgreSQL, após um erro a transação do teste fica abortada.)
             assertThatThrownBy(() -> jdbc.update("DELETE FROM reserva WHERE id = ?", reserva))
                     .isInstanceOf(DataAccessException.class)
                     .hasMessageContaining("reservas não podem ser apagadas");
-            assertThat(jdbc.queryForObject("SELECT count(*) FROM reserva WHERE id = ?", Integer.class, reserva))
-                    .isEqualTo(1);
         }
 
         @Test
