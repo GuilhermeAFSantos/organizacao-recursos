@@ -9,8 +9,6 @@ import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
 import br.senac.qs.recursos.domain.model.Ocupacao;
 import br.senac.qs.recursos.domain.model.PeriodoReserva;
 import br.senac.qs.recursos.domain.model.Recurso;
-import br.senac.qs.recursos.domain.model.RegistroAuditoria;
-import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -33,15 +31,15 @@ public class AlterarHorarioReserva {
     private final ReservaRepository reservas;
     private final UsuarioDoToken usuarioDoToken;
     private final AgendaDeRecursos agenda;
-    private final RegistroAuditoriaRepository auditoria;
+    private final HistoricoDaReserva historico;
     private final Clock clock;
 
     public AlterarHorarioReserva(ReservaRepository reservas, UsuarioDoToken usuarioDoToken, AgendaDeRecursos agenda,
-                                 RegistroAuditoriaRepository auditoria, Clock clock) {
+                                 HistoricoDaReserva historico, Clock clock) {
         this.reservas = reservas;
         this.usuarioDoToken = usuarioDoToken;
         this.agenda = agenda;
-        this.auditoria = auditoria;
+        this.historico = historico;
         this.clock = clock;
     }
 
@@ -70,7 +68,7 @@ public class AlterarHorarioReserva {
             }
             throw e;
         }
-        reserva.retirarMudancas().forEach(m -> auditoria.save(RegistroAuditoria.daReserva(reserva.getId(), m)));
+        historico.registrar(reserva);
         return ReservaResumo.de(reserva);
     }
 }

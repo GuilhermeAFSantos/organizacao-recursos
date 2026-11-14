@@ -58,7 +58,7 @@ class CriarReservaTest {
     MaterialRepository materiais = mock(MaterialRepository.class);
 
     CriarReserva casoDeUso = new CriarReserva(new UsuarioDoToken(usuarios), new AgendaDeRecursos(recursos, ocupacoes),
-            salas, professores, materiais, reservas, auditoria,
+            salas, professores, materiais, reservas, new HistoricoDaReserva(auditoria, evento -> { }),
             Clock.fixed(Instant.parse("2026-11-30T12:00:00Z"), ZoneOffset.UTC));
 
     CriarReservaComando comando = new CriarReservaComando("ana@senac.br", 7L, null, List.of(), INICIO, FIM, "Aula");

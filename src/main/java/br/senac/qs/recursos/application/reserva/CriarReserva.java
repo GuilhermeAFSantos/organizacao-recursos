@@ -9,11 +9,9 @@ import br.senac.qs.recursos.application.ViolacaoDeExclusao;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
 import br.senac.qs.recursos.domain.model.PeriodoReserva;
 import br.senac.qs.recursos.domain.model.Recurso;
-import br.senac.qs.recursos.domain.model.RegistroAuditoria;
 import br.senac.qs.recursos.domain.model.Reserva;
 import br.senac.qs.recursos.domain.repository.MaterialRepository;
 import br.senac.qs.recursos.domain.repository.ProfessorRepository;
-import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import br.senac.qs.recursos.domain.repository.SalaRepository;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -39,20 +37,20 @@ public class CriarReserva {
     private final ProfessorRepository professores;
     private final MaterialRepository materiais;
     private final ReservaRepository reservas;
-    private final RegistroAuditoriaRepository auditoria;
+    private final HistoricoDaReserva historico;
     private final Clock clock;
 
     @SuppressWarnings("java:S107") // um repositório por tipo de recurso: juntar esconderia de onde vem cada um
     public CriarReserva(UsuarioDoToken usuarioDoToken, AgendaDeRecursos agenda, SalaRepository salas,
                         ProfessorRepository professores, MaterialRepository materiais, ReservaRepository reservas,
-                        RegistroAuditoriaRepository auditoria, Clock clock) {
+                        HistoricoDaReserva historico, Clock clock) {
         this.usuarioDoToken = usuarioDoToken;
         this.agenda = agenda;
         this.salas = salas;
         this.professores = professores;
         this.materiais = materiais;
         this.reservas = reservas;
-        this.auditoria = auditoria;
+        this.historico = historico;
         this.clock = clock;
     }
 
@@ -66,8 +64,7 @@ public class CriarReserva {
         var reserva = Reserva.solicitar(solicitante, recursos, periodo, comando.finalidade(), clock.instant());
         agenda.garantirLivre(recursos, periodo, null);
         var gravada = gravar(reserva, recursos);
-        // RC08: na mesma transação da reserva. Se a auditoria falhar, a reserva também é desfeita.
-        gravada.retirarMudancas().forEach(m -> auditoria.save(RegistroAuditoria.daReserva(gravada.getId(), m)));
+        historico.registrar(gravada);
         return ReservaResumo.de(gravada);
     }
 

@@ -5,10 +5,8 @@ import java.time.Instant;
 
 import br.senac.qs.recursos.application.UsuarioDoToken;
 import br.senac.qs.recursos.domain.exception.RecursoNaoEncontradoException;
-import br.senac.qs.recursos.domain.model.RegistroAuditoria;
 import br.senac.qs.recursos.domain.model.Reserva;
 import br.senac.qs.recursos.domain.model.Usuario;
-import br.senac.qs.recursos.domain.repository.RegistroAuditoriaRepository;
 import br.senac.qs.recursos.domain.repository.ReservaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,14 +24,14 @@ public class TransicionarReserva {
 
     private final ReservaRepository reservas;
     private final UsuarioDoToken usuarioDoToken;
-    private final RegistroAuditoriaRepository auditoria;
+    private final HistoricoDaReserva historico;
     private final Clock clock;
 
     public TransicionarReserva(ReservaRepository reservas, UsuarioDoToken usuarioDoToken,
-                               RegistroAuditoriaRepository auditoria, Clock clock) {
+                               HistoricoDaReserva historico, Clock clock) {
         this.reservas = reservas;
         this.usuarioDoToken = usuarioDoToken;
-        this.auditoria = auditoria;
+        this.historico = historico;
         this.clock = clock;
     }
 
@@ -81,7 +79,7 @@ public class TransicionarReserva {
 
         // Flush agora: o UPDATE com checagem de versão roda aqui, não no commit.
         reservas.saveAndFlush(reserva);
-        reserva.retirarMudancas().forEach(m -> auditoria.save(RegistroAuditoria.daReserva(reserva.getId(), m)));
+        historico.registrar(reserva);
         return ReservaResumo.de(reserva);
     }
 }
