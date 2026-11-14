@@ -477,8 +477,7 @@ Funcionalidade: Máquina de estados da reserva (RC05, RC07, RC08)
 
 ### Fronteiras de horário das transições
 
-Reserva aprovada de 08:00 a 10:00. As linhas **EM ABERTO** registram o comportamento atual do código,
-que não é uma decisão de negócio.
+Reserva aprovada de 08:00 a 10:00. Todas as fronteiras estão decididas.
 
 | Ação | Agora | Resultado | Fonte |
 |---|---|---|---|
@@ -489,9 +488,9 @@ que não é uma decisão de negócio.
 | Cancelar (APROVADA) | 08:00:00 ou depois, mesmo sem início de uso | recusado (422) | [Q7](#q7) |
 | Registrar não comparecimento | 07:59:59 | recusado (422) | [Q5](#q5) |
 | Registrar não comparecimento | 08:00:00 (exatamente no início) | permitido | [Q5](#q5) |
-| Registrar não comparecimento | depois das 10:00 (após o fim) | **EM ABERTO** · hoje: permitido | [Q5](#q5) |
-| Registrar início de uso | 07:45:00 (antes do início) | **EM ABERTO** · hoje: permitido | [Q4](#q4) |
-| Concluir | 09:00:00 (antes do fim) | **EM ABERTO** · hoje: permitido, e o horário continua ocupado até as 10:00 | [Q6](#q6) |
+| Registrar não comparecimento | depois das 10:00 (após o fim) | permitido (registro tardio) | [Q5](#q5) |
+| Registrar início de uso | 07:45:00 (antes do início) | permitido; o horário reservado não muda | [Q4](#q4) |
+| Concluir | 09:00:00 (antes do fim) | permitido; o horário continua ocupado até as 10:00 | [Q6](#q6) |
 | Alterar horário | 07:59 | permitido | decisão da fatia de alteração |
 | Alterar horário | 08:00:00 | recusado (422) | decisão da fatia de alteração |
 | Criar reserva | início às 08:00, pedida às 08:00 ou depois | recusado (422 "A reserva deve começar no futuro.") | [Q12](#q12) |
@@ -509,9 +508,9 @@ exemplos afetados para as tabelas executáveis e registre a decisão em `docs/ar
 | <a id="q1"></a>Q1 | Reserva que **termina exatamente no início** de uma manutenção (ou começa exatamente no fim) é aceita, ou a manutenção precisa de margem? | MN-01 (F3, F9) | ✅ **Decidido:** aceita (semiaberto, como reserva × reserva) |
 | <a id="q2"></a>Q2 | RESPONSAVEL e ADMINISTRADOR podem **criar** reservas? | AU-04, AU-05 | ✅ **Decidido:** só o SOLICITANTE cria (403 para os demais) |
 | <a id="q3"></a>Q3 | Qual a **granularidade** dos horários? | MN-01 (F2, F4s, F8s, F10) | ✅ **Decidido:** minutos cheios; segundos → 400 |
-| <a id="q4"></a>Q4 | O RESPONSAVEL pode registrar o **início de uso** antes do horário reservado? Com quanta antecedência? | ES-01, fronteiras | ⏳ **Em aberto.** Hoje: sem regra de horário |
-| <a id="q5"></a>Q5 | O **não comparecimento** pode ser registrado a partir do instante exato do início ou só após uma tolerância? E **depois do fim**? | ES-01, fronteiras | ✅ **Decidido:** a partir do início, sem tolerância. ⏳ Depois do fim: não decidido (hoje permitido) |
-| <a id="q6"></a>Q6 | **Concluir antes do fim** é permitido? Se for, o tempo restante é liberado? | ES-01, fronteiras | ⏳ **Em aberto.** Hoje: permitido, e o horário continua ocupado até o fim |
+| <a id="q4"></a>Q4 | O RESPONSAVEL pode registrar o **início de uso** antes do horário reservado? Com quanta antecedência? | ES-01, fronteiras | ✅ **Decidido:** permitido antes do início (entrega da chave quando o professor chega). Só registra a entrega: o horário reservado e a ocupação não mudam, então não há sobreposição com a reserva anterior. Exigir o início travaria o fluxo, já que a reserva precisa ser criada no futuro (Q12) |
+| <a id="q5"></a>Q5 | O **não comparecimento** pode ser registrado a partir do instante exato do início ou só após uma tolerância? E **depois do fim**? | ES-01, fronteiras | ✅ **Decidido:** a partir do início, sem tolerância, e também depois do fim (registro tardio é verdade e libera o horário para o relatório) |
+| <a id="q6"></a>Q6 | **Concluir antes do fim** é permitido? Se for, o tempo restante é liberado? | ES-01, fronteiras | ✅ **Decidido:** concluir antes do fim é permitido e o horário **continua ocupado** até o fim reservado. Liberar o restante separaria o horário da reserva do da ocupação (risco já coberto por teste) e misturaria horas reservadas com horas usadas no relatório |
 | <a id="q7"></a>Q7 | O cancelamento é limitado pelo **relógio** (antes do início) ou só pelo **estado** (antes de EM_USO)? | ES-04 | ✅ **Decidido:** pelo relógio; APROVADA só é cancelada antes do início |
 | <a id="q8"></a>Q8 | Uma SOLICITADA pode ser **aprovada depois do início**? | AP-08 | ✅ **Decidido:** aprovar só antes do início; a pendente pode ser rejeitada ou cancelada depois |
 | <a id="q9"></a>Q9 | Bloqueio **ADMINISTRATIVO** segue as mesmas regras da manutenção? | MN-10 | ✅ **Decidido:** mesmas regras |

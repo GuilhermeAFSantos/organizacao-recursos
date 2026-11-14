@@ -178,7 +178,7 @@ Perguntas registradas em [docs/testes/bdd-aprovacao-bloqueio.md](testes/bdd-apro
 | Q5 | Quando registrar NAO_COMPARECEU? | A partir do horário de início, sem tolerância fixa. |
 | Q7 | Até quando cancelar uma reserva APROVADA? | Só **antes do início**. Depois do início sem uso, o RESPONSAVEL registra NAO_COMPARECEU. |
 | Q8 | Aprovar depois do início? | Não: aprovar só antes do início. Uma solicitação ainda pendente pode ser rejeitada ou cancelada a qualquer momento. |
-| Q4, Q6 | Início de uso antecipado? Conclusão antes do fim? | **Em aberto.** Por ora valem só as transições da máquina de estados, sem regra de horário. |
+| Q4, Q6 | Início de uso antecipado? Conclusão antes do fim? | **Decididas em 14/11:** os dois são permitidos e não mudam o horário reservado (a ocupação segue até o fim). O não comparecimento também pode ser registrado depois do fim. Motivos em [cenários BDD](testes/bdd-aprovacao-bloqueio.md#q4). |
 
 ### Decisões da fatia de manutenção e bloqueios (Fase 2)
 
