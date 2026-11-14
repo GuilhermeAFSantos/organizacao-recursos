@@ -56,7 +56,7 @@ class CriarReservaSalaTest {
         when(sala.isAtivo()).thenReturn(true);
 
         when(usuarios.findByEmailIgnoreCase("ana@senac.br")).thenReturn(Optional.of(usuario));
-        when(salas.findById(7L)).thenReturn(Optional.of(sala));
+        when(salas.travarParaReserva(7L)).thenReturn(Optional.of(sala));
         // A outra transação ainda não confirmou: a consulta prévia vê o horário livre.
         when(ocupacoes.existeSobreposicao(7L, INICIO, FIM)).thenReturn(false);
     }

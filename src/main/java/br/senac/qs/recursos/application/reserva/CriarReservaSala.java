@@ -66,7 +66,7 @@ public class CriarReservaSala {
     }
 
     private Sala salaAtiva(Long salaId) {
-        return salas.findById(salaId)
+        return salas.travarParaReserva(salaId)
                 .filter(Recurso::isAtivo)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Sala " + salaId + " não encontrada."));
     }
