@@ -54,6 +54,19 @@ class AgendaDeRecursosTest {
                         + "Escolha outro horário ou outra sala.");
     }
 
+    @Test
+    @DisplayName("MN-10: bloqueio ADMINISTRATIVO segue a mesma regra, e a mensagem diz que a sala está bloqueada")
+    void bloqueioAdministrativoDizQueASalaEstaBloqueada() {
+        var bloqueio = Bloqueio.registrar(adm, sala101, TipoBloqueio.ADMINISTRATIVO, periodo("10:00", "12:00"),
+                "Evento institucional", instante("07:00"));
+        when(ocupacoes.sobrepostas(any(), any(), any())).thenReturn(bloqueio.getOcupacoes());
+
+        assertThatThrownBy(() -> agenda.garantirLivre(List.of(sala101), periodo("10:30", "11:30"), null, ana))
+                .isInstanceOf(ConflitoHorarioException.class)
+                .hasMessage("A sala Sala 101 está bloqueada das 10:00 às 12:00 de 01/12/2026. "
+                        + "Escolha outro horário ou outra sala.");
+    }
+
     static PeriodoReserva periodo(String inicio, String fim) {
         return new PeriodoReserva(instante(inicio), instante(fim));
     }
