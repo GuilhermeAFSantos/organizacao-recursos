@@ -61,6 +61,52 @@ class PeriodoReservaTest {
         }
     }
 
+    @Nested
+    @DisplayName("RC02: detecção de sobreposição, intervalos semiabertos [início, fim)")
+    class Sobreposicao {
+
+        /*
+         * REGRA EXPLÍCITA: intervalos que apenas se TOCAM (fim de um = início do outro) NÃO se
+         * sobrepõem. Uma aula das 08h às 10h e outra das 10h às 12h na mesma sala são válidas.
+         * Cada par é verificado nos dois sentidos: a relação precisa ser simétrica.
+         */
+        @ParameterizedTest(name = "A=[{0}–{1}) × B=[{2}–{3}) → sobrepõe={4} ({5})")
+        @CsvSource(delimiter = '|', textBlock = """
+            08:00:00 | 10:00:00 | 10:00:00 | 12:00:00 | false | B começa exatamente quando A termina (só se tocam)
+            10:00:00 | 12:00:00 | 08:00:00 | 10:00:00 | false | A começa exatamente quando B termina (só se tocam)
+            08:00:00 | 10:00:00 | 10:00:01 | 12:00:00 | false | separados por 1 segundo
+            08:00:00 | 10:00:00 | 13:00:00 | 14:00:00 | false | totalmente separados
+            08:00:00 | 10:00:01 | 10:00:00 | 12:00:00 | true  | cruzam por 1 segundo
+            08:00:00 | 10:00:00 | 09:00:00 | 11:00:00 | true  | sobreposição parcial
+            08:00:00 | 12:00:00 | 09:00:00 | 10:00:00 | true  | B contido em A
+            08:00:00 | 10:00:00 | 08:00:00 | 09:00:00 | true  | mesmo início
+            08:00:00 | 10:00:00 | 09:00:00 | 10:00:00 | true  | mesmo término
+            08:00:00 | 10:00:00 | 08:00:00 | 10:00:00 | true  | intervalos idênticos
+            """)
+        void detectaSobreposicao(String inicioA, String fimA, String inicioB, String fimB,
+                                 boolean esperado, String caso) {
+            var a = periodo(inicioA, fimA);
+            var b = periodo(inicioB, fimB);
+
+            assertThat(a.sobrepoe(b)).as("A × B").isEqualTo(esperado);
+            assertThat(b.sobrepoe(a)).as("B × A (simetria)").isEqualTo(esperado);
+        }
+
+        @Test
+        @DisplayName("mesmo instante escrito em fusos diferentes conta como sobreposição")
+        void sobreposicaoEntreFusos() {
+            var emBrasilia = new PeriodoReserva(instante("2026-12-01T08:00:00-03:00"), instante("2026-12-01T10:00:00-03:00"));
+            var emUtc = new PeriodoReserva(instante("2026-12-01T12:59:59Z"), instante("2026-12-01T14:00:00Z"));
+
+            assertThat(emBrasilia.sobrepoe(emUtc)).isTrue();
+        }
+
+        private static PeriodoReserva periodo(String horaInicio, String horaFim) {
+            return new PeriodoReserva(instante("2026-12-01T" + horaInicio + "-03:00"),
+                                      instante("2026-12-01T" + horaFim + "-03:00"));
+        }
+    }
+
     static Instant instante(String isoComFuso) {
         return OffsetDateTime.parse(isoComFuso).toInstant();
     }

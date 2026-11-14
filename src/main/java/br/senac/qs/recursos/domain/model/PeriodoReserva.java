@@ -31,4 +31,8 @@ public record PeriodoReserva(Instant inicio, Instant fim) {
             throw new RegraNegocioException(FIM_ANTES_DO_INICIO);
         }
     }
+
+    public boolean sobrepoe(PeriodoReserva outro) {
+        throw new UnsupportedOperationException("ainda não implementado");
+    }
 }
