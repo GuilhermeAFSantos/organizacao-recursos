@@ -1,5 +1,6 @@
 package br.senac.qs.recursos.domain.model;
 
+import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
@@ -34,12 +35,27 @@ public class Sala extends Recurso {
 
     public static Sala cadastrar(Usuario autor, String nome, boolean restrito, int capacidade, String bloco,
                                  int andar, TipoSala tipoSala) {
-        throw new UnsupportedOperationException("a implementar");
+        exigirAdministrador(autor);
+        var sala = new Sala(nome, restrito);
+        sala.preencher(nome, restrito, capacidade, bloco, andar, tipoSala);
+        return sala;
     }
 
     public void alterar(Usuario autor, String nome, boolean restrito, int capacidade, String bloco, int andar,
                         TipoSala tipoSala) {
-        throw new UnsupportedOperationException("a implementar");
+        exigirAdministrador(autor);
+        preencher(nome, restrito, capacidade, bloco, andar, tipoSala);
+    }
+
+    private void preencher(String nome, boolean restrito, int capacidade, String bloco, int andar, TipoSala tipoSala) {
+        if (capacidade <= 0) {
+            throw new RegraNegocioException("A capacidade da sala deve ser maior que zero.");
+        }
+        definirDadosGerais(nome, restrito);
+        this.capacidade = capacidade;
+        this.bloco = obrigatorio(bloco, "Informe o bloco da sala.");
+        this.andar = andar;
+        this.tipoSala = informado(tipoSala, "Informe o tipo da sala.");
     }
 
     @Override

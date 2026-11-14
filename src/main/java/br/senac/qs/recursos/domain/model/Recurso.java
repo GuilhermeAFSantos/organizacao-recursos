@@ -1,5 +1,7 @@
 package br.senac.qs.recursos.domain.model;
 
+import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
+import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -43,11 +45,46 @@ public abstract class Recurso {
     public abstract TipoRecurso getTipo();
 
     public void desativar(Usuario autor) {
-        throw new UnsupportedOperationException("a implementar");
+        exigirAdministrador(autor);
+        if (!ativo) {
+            throw new RegraNegocioException("O recurso já está inativo.");
+        }
+        this.ativo = false;
     }
 
     public void reativar(Usuario autor) {
-        throw new UnsupportedOperationException("a implementar");
+        exigirAdministrador(autor);
+        if (ativo) {
+            throw new RegraNegocioException("O recurso já está ativo.");
+        }
+        this.ativo = true;
+    }
+
+    /** Dados comuns a todo recurso; chamado pelo cadastro e pela alteração de cada tipo. */
+    protected void definirDadosGerais(String nome, boolean restrito) {
+        this.nome = obrigatorio(nome, "Informe o nome do recurso.");
+        this.restrito = restrito;
+    }
+
+    protected static void exigirAdministrador(Usuario autor) {
+        if (autor.getPerfil() != Perfil.ADMINISTRADOR) {
+            throw new OperacaoNaoPermitidaException("Somente um ADMINISTRADOR pode cadastrar ou alterar recursos.");
+        }
+    }
+
+    /** Texto obrigatório, sem espaços nas pontas. */
+    protected static String obrigatorio(String valor, String mensagem) {
+        if (valor == null || valor.isBlank()) {
+            throw new RegraNegocioException(mensagem);
+        }
+        return valor.strip();
+    }
+
+    protected static <T> T informado(T valor, String mensagem) {
+        if (valor == null) {
+            throw new RegraNegocioException(mensagem);
+        }
+        return valor;
     }
 
     public Long getId() {

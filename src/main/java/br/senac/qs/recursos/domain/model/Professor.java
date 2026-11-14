@@ -32,14 +32,31 @@ public class Professor extends Recurso {
     protected Professor() {
     }
 
+    private Professor(String nome, boolean restrito) {
+        super(nome, restrito);
+    }
+
     public static Professor cadastrar(Usuario autor, String nome, boolean restrito, String matricula, String email,
                                       Set<Competencia> competencias) {
-        throw new UnsupportedOperationException("a implementar");
+        exigirAdministrador(autor);
+        var professor = new Professor(nome, restrito);
+        professor.preencher(nome, restrito, matricula, email, competencias);
+        return professor;
     }
 
     public void alterar(Usuario autor, String nome, boolean restrito, String matricula, String email,
                         Set<Competencia> competencias) {
-        throw new UnsupportedOperationException("a implementar");
+        exigirAdministrador(autor);
+        preencher(nome, restrito, matricula, email, competencias);
+    }
+
+    private void preencher(String nome, boolean restrito, String matricula, String email,
+                           Set<Competencia> competencias) {
+        definirDadosGerais(nome, restrito);
+        this.matricula = obrigatorio(matricula, "Informe a matrícula do professor.");
+        this.email = email == null || email.isBlank() ? null : Usuario.normalizarEmail(email);
+        this.competencias.clear();
+        this.competencias.addAll(competencias);
     }
 
     @Override
@@ -55,7 +72,8 @@ public class Professor extends Recurso {
         return email;
     }
 
+    /** Nomes das competências em ordem alfabética (ignorando maiúsculas), para exibição estável. */
     public List<String> nomesDasCompetencias() {
-        throw new UnsupportedOperationException("a implementar");
+        return competencias.stream().map(Competencia::getNome).sorted(String.CASE_INSENSITIVE_ORDER).toList();
     }
 }

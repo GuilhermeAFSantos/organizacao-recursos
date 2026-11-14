@@ -158,7 +158,7 @@ class CadastroRecursosTest {
         @Test
         @DisplayName("nome sem espaços extras; a chave ignora maiúsculas")
         void normaliza() {
-            assertThat(Competencia.nova("  Banco   de  Dados ").getNome()).isEqualTo("Banco de Dados");
+            assertThat(Competencia.nova("  Banco \t de  Dados ").getNome()).isEqualTo("Banco de Dados");
             assertThat(Competencia.chave(" JAVA ")).isEqualTo(Competencia.chave("java"));
         }
 

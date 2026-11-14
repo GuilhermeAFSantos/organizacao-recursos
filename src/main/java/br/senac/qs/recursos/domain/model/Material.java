@@ -27,14 +27,30 @@ public class Material extends Recurso {
     protected Material() {
     }
 
+    private Material(String nome, boolean restrito) {
+        super(nome, restrito);
+    }
+
     public static Material cadastrar(Usuario autor, String nome, boolean restrito, String patrimonio,
                                      String tipoMaterial, EstadoConservacao estado) {
-        throw new UnsupportedOperationException("a implementar");
+        exigirAdministrador(autor);
+        var material = new Material(nome, restrito);
+        material.preencher(nome, restrito, patrimonio, tipoMaterial, estado);
+        return material;
     }
 
     public void alterar(Usuario autor, String nome, boolean restrito, String patrimonio, String tipoMaterial,
                         EstadoConservacao estado) {
-        throw new UnsupportedOperationException("a implementar");
+        exigirAdministrador(autor);
+        preencher(nome, restrito, patrimonio, tipoMaterial, estado);
+    }
+
+    private void preencher(String nome, boolean restrito, String patrimonio, String tipoMaterial,
+                           EstadoConservacao estado) {
+        definirDadosGerais(nome, restrito);
+        this.patrimonio = obrigatorio(patrimonio, "Informe o patrimônio do material.");
+        this.tipoMaterial = obrigatorio(tipoMaterial, "Informe o tipo do material.");
+        this.estadoConservacao = informado(estado, "Informe o estado de conservação.");
     }
 
     @Override
