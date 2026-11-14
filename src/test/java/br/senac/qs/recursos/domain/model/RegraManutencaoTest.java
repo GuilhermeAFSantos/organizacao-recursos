@@ -1,6 +1,7 @@
 package br.senac.qs.recursos.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Clock;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Regra 3 de docs/testes/bdd-aprovacao-bloqueio.md (recurso em manutenção), refeita em TDD estrito.
@@ -80,6 +82,19 @@ class RegraManutencaoTest {
             assertThat(o.isBloqueante()).isTrue();
             assertThat(o.getPeriodo()).isEqualTo(periodo("10:00", novoFim));
         });
+    }
+
+    @ParameterizedTest(name = "encerrada às {0}")
+    @ValueSource(strings = {"07:00", "10:00"})
+    @DisplayName("MN-11: encerrar antes do início (ou exatamente no início) desfaz a manutenção e libera o horário inteiro")
+    void encerrarAntesDoInicioDesfazAManutencao(String agora) {
+        var manutencao = manutencaoDaSala101();
+        var relogio = Clock.fixed(instante(agora), ZoneOffset.UTC);
+
+        assertThatCode(() -> manutencao.encerrar(adm, relogio.instant())).doesNotThrowAnyException();
+
+        assertThat(manutencao.isAtivo()).isFalse();
+        assertThat(manutencao.getOcupacoes()).allSatisfy(o -> assertThat(o.isBloqueante()).isFalse());
     }
 
     Bloqueio manutencaoDaSala101() {
