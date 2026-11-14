@@ -204,6 +204,7 @@ public class Reserva {
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
         exigirResponsavel(responsavel, "rejeitar");
+        proibirDecisaoSobreAPropria(responsavel);
         exigirTransicaoPara(REJEITADA);
         if (motivo == null || motivo.isBlank()) {
             throw new RegraNegocioException("Informe o motivo da rejeição.");
