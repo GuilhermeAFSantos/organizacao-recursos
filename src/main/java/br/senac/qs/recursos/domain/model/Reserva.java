@@ -179,6 +179,9 @@ public class Reserva {
 
     public void rejeitar(Usuario responsavel, String motivo, Instant agora) {
         exigirResponsavel(responsavel, "rejeitar");
+        if (motivo == null || motivo.isBlank()) {
+            throw new RegraNegocioException("Informe o motivo da rejeição.");
+        }
         mudarPara(REJEITADA, responsavel, motivo, agora);
     }
 
