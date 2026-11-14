@@ -1,6 +1,8 @@
 package br.senac.qs.recursos.web.reserva;
 
+import br.senac.qs.recursos.application.Pagina;
 import br.senac.qs.recursos.application.reserva.AlterarHorarioReserva;
+import br.senac.qs.recursos.application.reserva.ConsultarReservas;
 import br.senac.qs.recursos.application.reserva.CriarReserva;
 import br.senac.qs.recursos.application.reserva.CriarReservaComando;
 import br.senac.qs.recursos.application.reserva.TransicionarReserva;
@@ -9,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -31,12 +35,25 @@ public class ReservaController {
     private final CriarReserva criarReserva;
     private final TransicionarReserva transicionar;
     private final AlterarHorarioReserva alterarHorario;
+    private final ConsultarReservas consultar;
 
     public ReservaController(CriarReserva criarReserva, TransicionarReserva transicionar,
-                             AlterarHorarioReserva alterarHorario) {
+                             AlterarHorarioReserva alterarHorario, ConsultarReservas consultar) {
         this.criarReserva = criarReserva;
         this.transicionar = transicionar;
         this.alterarHorario = alterarHorario;
+        this.consultar = consultar;
+    }
+
+    /**
+     * Reservas em ordem de início. O SOLICITANTE recebe só as próprias; RESPONSAVEL e ADMINISTRADOR,
+     * todas (ex.: {@code ?status=SOLICITADA} é a fila de aprovação).
+     */
+    @GetMapping
+    public Pagina<ReservaResponse> listar(@Valid @ModelAttribute FiltroReservasRequest filtros,
+                                          @AuthenticationPrincipal Jwt jwt) {
+        return consultar.listar(jwt.getSubject(), filtros.status(), filtros.de(), filtros.ate(), filtros.pagina(),
+                filtros.tamanho()).converter(ReservaResponse::de);
     }
 
     @PostMapping

@@ -303,6 +303,22 @@ nos testes, como ele próprio recomenda para Java 21+.
 | Recursos listados | Só os com alguma atividade no período, do mais ao menos usado. | Lista curta e útil; ociosidade completa pode ser uma evolução. |
 | SQL nativo | As agregações ficam num repositório próprio (`RelatorioRepository`), com parâmetros ligados. | Soma de intervalos recortados é natural no PostgreSQL e cara em JPQL. |
 
+### Decisões da fatia de interface (Fase 2)
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Tecnologia | HTML, CSS e JavaScript puros em `src/main/resources/static`, servidos pela própria aplicação. | Sem Node, sem etapa de build e sem outra implantação: o projeto continua um `./mvnw` e um artefato. As telas são poucas e simples. |
+| Telas por perfil | SOLICITANTE: reservar (pesquisa de salas livres + professor e materiais livres no mesmo horário) e minhas reservas (mudar horário, cancelar). RESPONSAVEL: aprovações e relatório. ADMINISTRADOR: todas as reservas e relatório. Cadastros continuam pelo Swagger UI. | Cobre o fluxo principal de cada perfil; telas de cadastro seriam formulários espelhando a API, com pouco ganho para a avaliação. |
+| Nova API de apoio | `GET /api/reservas` (status, período, paginação). O SOLICITANTE recebe só as próprias, qualquer que seja o filtro pedido. | A interface precisava listar reservas; a regra de quem vê o quê fica no servidor, não na tela. |
+| XSS | Dados entram na página **só como texto** (`textContent`, nós de texto), nunca como HTML; `InterfaceIT` reprova `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `eval` e `document.write`. | Um nome de sala com `<script>` aparece escrito, não executa. |
+| Content-Security-Policy | `default-src 'self'`, sem `unsafe-inline` nem `unsafe-eval`, `frame-ancestors 'none'`; nenhum código inline no HTML. O Swagger UI fica fora (usa estilos inline). Também `Referrer-Policy: no-referrer`. | Segunda barreira: mesmo que algo escapasse, o navegador não executaria script injetado nem permitiria *clickjacking*. |
+| Token | `sessionStorage` (some ao fechar a aba), enviado só no cabeçalho `Authorization`. Expirado ou recusado (401) → volta ao login com aviso. | Sem cookie de autenticação, a API segue sem precisar de CSRF (ver S4502). |
+| Horários | A tela monta `AAAA-MM-DDTHH:MM:00-03:00` e exibe no fuso `America/Sao_Paulo`. | Brasília não tem horário de verão desde 2019; o servidor guarda instantes UTC. |
+| Responsividade | Primeiro o celular: uma coluna, margem de 16px, alvos de toque de 44px, tabela do relatório que vira cartões abaixo de 720px, tema escuro pelo sistema. | Professores reservam pelo celular no corredor. |
+| Erros | A tela mostra o `detail` do ProblemDetail e, se houver, cada campo inválido. | As mensagens da API já são escritas para o usuário final (RF13). |
+| Desempenho das listagens | `hibernate.default_batch_fetch_size: 50`. | Montar a lista de reservas com recursos e solicitante não vira uma consulta por linha. |
+| Evidência que falta | Teste no navegador (Playwright) do fluxo na tela e da largura de celular. | O `InterfaceIT` garante contrato e segurança, mas não executa o JavaScript. |
+
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
 mudança para a auditoria). A verificação de permissão vem primeiro para não revelar o estado da

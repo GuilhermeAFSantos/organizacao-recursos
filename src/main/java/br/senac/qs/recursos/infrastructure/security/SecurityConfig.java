@@ -11,6 +11,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 
 /**
  * Autenticação e autorização (RF01).
@@ -40,6 +46,16 @@ public class SecurityConfig {
         "/error"
     };
 
+    /**
+     * Content-Security-Policy da interface (RF13): só código e estilos da própria origem, nada inline,
+     * sem eval, sem ser embutida em outro site. Com isso, mesmo que um texto malicioso chegasse à
+     * página, o navegador não executaria script injetado. O Swagger UI fica de fora porque usa estilos
+     * inline; ele só documenta a API.
+     */
+    static final String POLITICA_DE_CONTEUDO = "default-src 'self'; script-src 'self'; style-src 'self'; "
+            + "img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; "
+            + "base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
     /*
      * SonarCloud java:S4502 ("CSRF desabilitado") analisado e considerado SEGURO aqui:
      * a API é stateless e não usa cookie de autenticação; o JWT só viaja no cabeçalho Authorization,
@@ -53,6 +69,13 @@ public class SecurityConfig {
             throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
+            .headers(cabecalhos -> cabecalhos
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+                    new NegatedRequestMatcher(new OrRequestMatcher(
+                        PathPatternRequestMatcher.withDefaults().matcher("/swagger-ui/**"),
+                        PathPatternRequestMatcher.withDefaults().matcher("/swagger-ui.html"))),
+                    new StaticHeadersWriter("Content-Security-Policy", POLITICA_DE_CONTEUDO)))
+                .referrerPolicy(politica -> politica.policy(ReferrerPolicy.NO_REFERRER)))
             .sessionManagement(sessao -> sessao.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(regras -> regras
                 .requestMatchers(ROTAS_PUBLICAS).permitAll()

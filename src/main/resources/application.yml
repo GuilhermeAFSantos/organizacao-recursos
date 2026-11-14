@@ -17,6 +17,8 @@ spring:
     open-in-view: false
     properties:
       hibernate:
+        # Listagens (reservas, pesquisa): carrega associações em lotes de 50 em vez de uma consulta por linha.
+        default_batch_fetch_size: 50
         jdbc:
           time_zone: UTC
 

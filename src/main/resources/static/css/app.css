@@ -1,0 +1,247 @@
+/*
+ * Interface da Organização de Recursos (RF13). Primeiro o celular: uma coluna, margem lateral de
+ * 16px e nada mais largo que a tela; a partir de 720px, formulários em grade e tabela comum.
+ * Sem estilos inline (a Content-Security-Policy não permite).
+ */
+:root {
+    --fundo: #f5f6f8;
+    --cartao: #ffffff;
+    --texto: #1c2230;
+    --suave: #586174;
+    --borda: #dde1e8;
+    --destaque: #0b5cad;
+    --destaque-texto: #ffffff;
+    --sucesso: #1d7a3e;
+    --erro: #b42318;
+    --aviso: #8a5a00;
+    --raio: 10px;
+    color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --fundo: #13161c;
+        --cartao: #1c2028;
+        --texto: #e6e9ef;
+        --suave: #a1a9b8;
+        --borda: #313744;
+        --destaque: #6aa8ff;
+        --destaque-texto: #0b1220;
+        --sucesso: #5fd38a;
+        --erro: #ff8a80;
+        --aviso: #f0c060;
+    }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    background: var(--fundo);
+    color: var(--texto);
+    overflow-x: hidden;
+}
+
+h1 { font-size: clamp(1.4rem, 5vw, 1.9rem); margin: 8px 0 4px; }
+h2 { font-size: 1.15rem; margin: 0 0 8px; }
+
+a { color: var(--destaque); }
+
+.ajuda { color: var(--suave); margin: 0 0 16px; }
+
+.destaque { font-weight: 600; margin: 0 0 12px; }
+
+/* ------------------------------------------------------------------ topo */
+.topo {
+    background: var(--cartao);
+    border-bottom: 1px solid var(--borda);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.topo__conteudo {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 8px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.marca { font-weight: 700; }
+
+.menu { display: flex; flex-wrap: wrap; gap: 4px; order: 3; width: 100%; }
+
+.menu button {
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--texto);
+    font: inherit;
+    padding: 8px 10px;
+    min-height: 44px;
+    cursor: pointer;
+}
+
+.menu button[aria-current="page"] { border-bottom-color: var(--destaque); font-weight: 600; }
+
+.usuario {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--suave);
+    font-size: .9rem;
+    min-width: 0;
+}
+
+.usuario span { overflow-wrap: anywhere; }
+
+/* ------------------------------------------------------------------ conteúdo */
+.conteudo { max-width: 960px; margin: 0 auto; padding: 16px; }
+
+.cartao {
+    background: var(--cartao);
+    border: 1px solid var(--borda);
+    border-radius: var(--raio);
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.lista { display: grid; gap: 12px; margin-bottom: 16px; }
+
+.lista .cartao { margin: 0; }
+
+.vazio { color: var(--suave); }
+
+/* ------------------------------------------------------------------ formulários */
+.formulario { display: grid; gap: 12px; }
+
+.formulario label, .formulario legend { font-weight: 600; font-size: .95rem; }
+
+.formulario label { display: grid; gap: 4px; }
+
+input, select {
+    font: inherit;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid var(--borda);
+    border-radius: 8px;
+    background: var(--fundo);
+    color: var(--texto);
+}
+
+input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 3px solid var(--destaque);
+    outline-offset: 2px;
+}
+
+fieldset { border: 1px solid var(--borda); border-radius: 8px; padding: 8px 12px; margin: 0; min-width: 0; }
+
+.opcoes { display: grid; gap: 6px; }
+
+.opcoes label { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+
+.opcoes input { width: auto; min-height: 0; }
+
+.botao {
+    font: inherit;
+    font-weight: 600;
+    min-height: 44px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--destaque);
+    background: var(--destaque);
+    color: var(--destaque-texto);
+    cursor: pointer;
+}
+
+.botao--discreto { background: transparent; color: var(--destaque); }
+
+.botao--perigo { background: transparent; color: var(--erro); border-color: var(--erro); }
+
+.botao:disabled { opacity: .6; cursor: progress; }
+
+.acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+.acoes input { flex: 1 1 180px; width: auto; }
+
+/* ------------------------------------------------------------------ avisos e situação */
+.aviso {
+    border-radius: var(--raio);
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    border: 1px solid currentColor;
+    background: var(--cartao);
+    overflow-wrap: anywhere;
+}
+
+.aviso[data-tipo="erro"] { color: var(--erro); }
+.aviso[data-tipo="sucesso"] { color: var(--sucesso); }
+
+.situacao {
+    display: inline-block;
+    font-size: .85rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+}
+
+.situacao[data-status="APROVADA"], .situacao[data-status="CONCLUIDA"], .situacao[data-status="EM_USO"] {
+    color: var(--sucesso);
+}
+.situacao[data-status="SOLICITADA"] { color: var(--aviso); }
+.situacao[data-status="REJEITADA"], .situacao[data-status="CANCELADA"],
+.situacao[data-status="NAO_COMPARECEU"] { color: var(--suave); }
+
+.cartao__titulo { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+
+.detalhe { color: var(--suave); margin: 2px 0; overflow-wrap: anywhere; }
+
+/* ------------------------------------------------------------------ relatório */
+.totais {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 0 0 16px;
+}
+
+.totais div { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 12px; }
+
+.totais dt { color: var(--suave); font-size: .85rem; }
+
+.totais dd { margin: 0; font-size: 1.4rem; font-weight: 700; }
+
+.tabela { width: 100%; border-collapse: collapse; background: var(--cartao); }
+
+.tabela caption { text-align: left; color: var(--suave); padding: 0 0 8px; }
+
+.tabela th, .tabela td { padding: 10px 12px; border-bottom: 1px solid var(--borda); text-align: left; }
+
+/* No celular, cada linha vira um cartão com o nome da coluna ao lado do valor. */
+@media (max-width: 719px) {
+    .tabela thead { display: none; }
+    .tabela, .tabela tbody, .tabela tr, .tabela td { display: block; width: 100%; }
+    .tabela tr { border: 1px solid var(--borda); border-radius: var(--raio); margin-bottom: 12px; }
+    .tabela td { display: flex; justify-content: space-between; gap: 12px; }
+    .tabela td::before { content: attr(data-rotulo); color: var(--suave); font-weight: 600; }
+}
+
+@media (min-width: 720px) {
+    .menu { order: 0; width: auto; }
+    .formulario--grade { grid-template-columns: repeat(3, 1fr); align-items: end; }
+    .formulario--grade .botao { grid-column: span 1; }
+}
+
+.rodape { max-width: 960px; margin: 0 auto; padding: 24px 16px; color: var(--suave); font-size: .9rem; }
+
+[hidden] { display: none !important; }
