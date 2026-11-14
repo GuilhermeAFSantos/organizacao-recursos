@@ -274,6 +274,20 @@ nos testes, como ele próprio recomenda para Java 21+.
 | Concorrência | O item é travado (`RecursoRepository.travar`) antes de ler a última movimentação. Testado: 5 retiradas simultâneas → 1 aceita. | Não há constraint simples que impeça "duas retiradas sem devolução"; o lock serializa. |
 | Ordem das movimentações | Pela sequência do id (a de maior id é a mais recente). | Duas movimentações no mesmo instante teriam ordem ambígua pela data. |
 
+### Decisões da fatia de notificação (Fase 2)
+
+| Tema | Decisão | Por quê |
+|---|---|---|
+| Quem é avisado | O solicitante da reserva, a cada operação que a muda (criação, transições, alteração de horário). | É quem precisa saber se pode usar a sala; avisar RESPONSAVEIS de novas solicitações pode vir depois. |
+| Um aviso por operação | O evento leva só a mudança **final**: criação com aprovação automática gera "foi aprovada automaticamente", não dois avisos. | Evita ruído para o usuário. |
+| Quando envia | `@TransactionalEventListener(AFTER_COMMIT)`: só depois de a reserva estar gravada. Operação recusada (rollback) não notifica. | É a D9: a falha externa não pode desfazer a reserva, e ninguém é avisado de algo que não aconteceu. |
+| Falha externa | Erro, serviço fora ou lento viram um aviso no log; a resposta ao usuário continua sendo de sucesso. Sem nova tentativa por ora. | A operação do usuário já deu certo. Fila com reenvio (*outbox*) seria o próximo passo, se a entrega precisar ser garantida. |
+| Tempo limite | Conexão e leitura limitadas por `NOTIFICACAO_TIMEOUT` (2 s). O envio é síncrono, depois do commit. | Mais simples de testar que envio assíncrono; o limite impede que um serviço lento segure a resposta. Testado com um serviço que demora 3 s e tempo limite de 0,5 s. |
+| Sem serviço configurado | Sem `NOTIFICACAO_URL`, a notificação é **simulada**: só registrada no log (sem o e-mail do destinatário). | O RF11 aceita notificação simulada; em desenvolvimento não é preciso subir nada. |
+| Formato | `POST {NOTIFICACAO_URL}/notificacoes` com `evento` (nome estável, ex.: `RESERVA_APROVADA`), `reservaId`, `destinatario`, `mensagem` em português e `ocorridoEm`. | O evento serve a quem integra; a mensagem, a quem lê. |
+| Arquitetura | Porta `Notificador` na aplicação, adaptador `NotificadorHttp` na infraestrutura; nos testes, o **WireMock** faz o papel do serviço externo. | Inversão de dependência só onde há integração externa (seção 1). |
+| Duplicação removida | `HistoricoDaReserva` concentra auditoria e evento, antes repetidos em criação, transições e alteração. | Um só lugar garante que toda mudança é auditada e notificada. |
+
 Ordem das verificações em toda transição: **quem pode** (perfil ou dono) → **transição permitida**
 → **regra de horário** → aplica (muda o estado, libera o horário se for o caso e registra a
 mudança para a auditoria). A verificação de permissão vem primeiro para não revelar o estado da
@@ -292,5 +306,5 @@ reserva a quem não pode agir sobre ela.
 | Testes dependem de Docker (Testcontainers) | Técnico | Docker Desktop em todas as máquinas; o runner do CI já tem Docker |
 | Gate de cobertura travar PRs | Técnico | Testar junto com cada funcionalidade |
 | Spring Boot 3.x no fim do suporte gratuito | Técnico | Manter a última versão 3.5.x; a disciplina exige 3.x |
-| Falha na notificação desfazer a reserva | Técnico | Notificar após o commit |
+| Falha na notificação desfazer a reserva | Técnico | Notificar após o commit, com tempo limite; `NotificacaoIT` simula erro 500 e lentidão com WireMock |
 | Reservas SOLICITADAS usadas para "guardar lugar" | Negócio | RESPONSAVEL pode rejeitar |
