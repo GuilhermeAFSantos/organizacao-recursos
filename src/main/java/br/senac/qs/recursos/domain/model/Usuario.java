@@ -2,6 +2,10 @@ package br.senac.qs.recursos.domain.model;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
+
+import br.senac.qs.recursos.domain.exception.OperacaoNaoPermitidaException;
+import br.senac.qs.recursos.domain.exception.RegraNegocioException;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -56,27 +60,54 @@ public class Usuario {
     }
 
     public static Usuario cadastrar(String nome, String email, String senhaHash, Perfil perfil, Instant agora) {
-        throw new UnsupportedOperationException("ainda não implementado");
+        var usuario = new Usuario();
+        usuario.nome = nome;
+        usuario.email = normalizarEmail(email);
+        usuario.senhaHash = senhaHash;
+        usuario.perfil = perfil;
+        usuario.ativo = true;
+        usuario.criadoEm = agora;
+        return usuario;
+    }
+
+    /** E-mail em minúsculas e sem espaços nas pontas: a mesma pessoa não vira dois cadastros. */
+    public static String normalizarEmail(String email) {
+        return email.strip().toLowerCase(Locale.ROOT);
     }
 
     public boolean estaBloqueado(Instant agora) {
-        return false;
+        return bloqueadoAte != null && agora.isBefore(bloqueadoAte);
     }
 
+    /** A 5ª falha seguida bloqueia por 15 minutos; passado o bloqueio, a contagem recomeça. */
     public void registrarFalhaDeLogin(Instant agora) {
-        throw new UnsupportedOperationException("ainda não implementado");
+        if (bloqueadoAte != null && !estaBloqueado(agora)) {
+            bloqueadoAte = null;
+        }
+        tentativasFalhas++;
+        if (tentativasFalhas >= MAXIMO_TENTATIVAS) {
+            bloqueadoAte = agora.plus(DURACAO_BLOQUEIO);
+            tentativasFalhas = 0;
+        }
     }
 
     public void registrarLoginComSucesso() {
-        throw new UnsupportedOperationException("ainda não implementado");
+        tentativasFalhas = 0;
+        bloqueadoAte = null;
     }
 
     public void desativar(Usuario administrador) {
-        throw new UnsupportedOperationException("ainda não implementado");
+        if (administrador.getPerfil() != Perfil.ADMINISTRADOR) {
+            throw new OperacaoNaoPermitidaException("Somente um ADMINISTRADOR pode gerenciar usuários.");
+        }
+        if (mesmaPessoaQue(administrador)) {
+            throw new RegraNegocioException("Você não pode desativar o próprio usuário.");
+        }
+        ativo = false;
     }
 
     public void trocarSenha(String novoHash) {
-        throw new UnsupportedOperationException("ainda não implementado");
+        this.senhaHash = novoHash;
     }
 
     public Long getId() {
