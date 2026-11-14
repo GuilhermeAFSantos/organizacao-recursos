@@ -151,6 +151,16 @@ class CadastroRecursosTest {
         }
     }
 
+    @Test
+    @DisplayName("Q13/D4: todo professor é restrito, mesmo que o cadastro diga o contrário")
+    void professorSempreRestrito() {
+        var professor = Professor.cadastrar(adm, "Carlos", false, "P-9", null, Set.of());
+        assertThat(professor.isRestrito()).as("no cadastro").isTrue();
+
+        professor.alterar(adm, "Carlos", false, "P-9", null, Set.of());
+        assertThat(professor.isRestrito()).as("na alteração").isTrue();
+    }
+
     @Nested
     @DisplayName("Competência")
     class Competencias {
