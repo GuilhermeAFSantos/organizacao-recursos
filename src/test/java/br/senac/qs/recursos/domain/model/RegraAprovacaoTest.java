@@ -51,6 +51,11 @@ class RegraAprovacaoTest {
         return reserva;
     }
 
+    /** Reserva do laboratório cuja solicitante é a própria RESPONSAVEL rita (AU-04). */
+    Reserva laboratorioPedidoPelaRita() {
+        return Reserva.solicitar(rita, List.of(laboratorio), PERIODO, "Reunião", AGORA);
+    }
+
     @Test
     @DisplayName("AP-01: reserva só com recursos não restritos nasce APROVADA pelo sistema")
     void reservaSoComRecursosNaoRestritosNasceAprovadaPeloSistema() {
@@ -127,7 +132,7 @@ class RegraAprovacaoTest {
     @Test
     @DisplayName("AU-04: RESPONSAVEL não aprova reserva solicitada por ele mesmo; outro RESPONSAVEL aprova")
     void responsavelNaoAprovaReservaQueEleMesmoSolicitou() {
-        var daRita = Reserva.solicitar(rita, List.of(laboratorio), PERIODO, "Reunião", AGORA);
+        var daRita = laboratorioPedidoPelaRita();
 
         assertThatThrownBy(() -> daRita.aprovar(rita, AGORA)).isInstanceOf(OperacaoNaoPermitidaException.class)
                 .hasMessage("Você não pode aprovar ou rejeitar uma reserva solicitada por você.");
@@ -190,7 +195,7 @@ class RegraAprovacaoTest {
     @Test
     @DisplayName("AU-04 (rejeição): RESPONSAVEL também não rejeita reserva solicitada por ele mesmo")
     void responsavelNaoRejeitaReservaQueEleMesmoSolicitou() {
-        var daRita = Reserva.solicitar(rita, List.of(laboratorio), PERIODO, "Reunião", AGORA);
+        var daRita = laboratorioPedidoPelaRita();
 
         assertThatThrownBy(() -> daRita.rejeitar(rita, "Desisti", AGORA)).isInstanceOf(OperacaoNaoPermitidaException.class)
                 .hasMessage("Você não pode aprovar ou rejeitar uma reserva solicitada por você.");
