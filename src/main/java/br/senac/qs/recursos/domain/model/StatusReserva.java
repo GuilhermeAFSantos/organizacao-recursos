@@ -1,18 +1,38 @@
 package br.senac.qs.recursos.domain.model;
 
-/** Estados da reserva (RC05). */
+import java.util.Set;
+
+/**
+ * Estados da reserva e a máquina de transições (RC05).
+ *
+ * <pre>
+ * SOLICITADA ─► APROVADA ─► EM_USO ─► CONCLUIDA
+ *     │            ├──────► CANCELADA
+ *     │            └──────► NAO_COMPARECEU
+ *     ├──────► REJEITADA
+ *     └──────► CANCELADA
+ * </pre>
+ *
+ * Estados finais não têm saída. Qualquer transição fora desta tabela é recusada.
+ */
 public enum StatusReserva {
     SOLICITADA, APROVADA, EM_USO, CONCLUIDA, REJEITADA, CANCELADA, NAO_COMPARECEU;
 
-    public boolean podeIrPara(StatusReserva destino) {
+    /** Para quais estados é permitido ir a partir deste. Fonte única da tabela de transições. */
+    public Set<StatusReserva> destinos() {
         return switch (this) {
-            case SOLICITADA -> destino == APROVADA || destino == REJEITADA || destino == CANCELADA;
-            case APROVADA -> destino == EM_USO || destino == CANCELADA || destino == NAO_COMPARECEU;
-            case EM_USO -> destino == CONCLUIDA;
-            case CONCLUIDA, REJEITADA, CANCELADA, NAO_COMPARECEU -> false;
+            case SOLICITADA -> Set.of(APROVADA, REJEITADA, CANCELADA);
+            case APROVADA -> Set.of(EM_USO, CANCELADA, NAO_COMPARECEU);
+            case EM_USO -> Set.of(CONCLUIDA);
+            case CONCLUIDA, REJEITADA, CANCELADA, NAO_COMPARECEU -> Set.of();
         };
     }
 
+    public boolean podeIrPara(StatusReserva destino) {
+        return destinos().contains(destino);
+    }
+
+    /** Estados em que a reserva deixa de ocupar o horário, que fica livre para outra reserva. */
     public boolean liberaHorario() {
         return this == REJEITADA || this == CANCELADA || this == NAO_COMPARECEU;
     }
